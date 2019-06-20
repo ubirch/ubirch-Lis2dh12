@@ -47,6 +47,7 @@
 #include <stdint.h>
 #include <math.h>
 
+
 /** @addtogroup LIS2DH12
   * @{
   *
@@ -113,10 +114,7 @@ typedef struct{
 
 #endif /* MEMS_SHARED_TYPES */
 
-/**
-  * @}
-  *
-  */
+
 
 /** @addtogroup LIS3MDL_Interfaces_Functions
   * @brief       This section provide a set of functions used to read and
