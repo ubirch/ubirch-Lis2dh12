@@ -25,6 +25,7 @@ int32_t Lis2dh12::platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSiz
     }
 
     *cs = 1;
+    EDEBUG_PRINTF("READ\r\n");
     return retVal;
 }
 
@@ -46,6 +47,7 @@ int32_t Lis2dh12::platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSi
     }
 
     *cs = 1;
+    EDEBUG_PRINTF("WRITE\r\n");
     return retVal;
 }
 
@@ -89,25 +91,25 @@ int32_t Lis2dh12::init() {
         EDEBUG_PRINTF("Device not found\r\n");
         return 0xffff;
     }
-    if(!error) return error;
+    if(error) return error;
 
     /*
      *  Enable Block Data Update
      */
     error = lis2dh12_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
-    if(!error) return error;
+    if(error) return error;
 
     /*
      * Set Output Data Rate to 1Hz
      */
     error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_1Hz);
-    if(!error) return error;
+    if(error) return error;
 
     /*
      * Set full scale to 2g
      */
     error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
-    if(!error) return error;
+    if(error) return error;
 
     /*
      * Set device in continuous mode with 12 bit resol.
