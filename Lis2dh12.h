@@ -8,19 +8,25 @@
 #include "mbed.h"
 #include "lis2dh12_reg.h"
 
+typedef struct {
+    int32_t x_axis;
+    int32_t y_axis;
+    int32_t z_axis;
+}acceleration_t;
+
 class Lis2dh12 {
 public:
+
     Lis2dh12(SPI *_spi, DigitalOut *_cs);
 
     virtual ~Lis2dh12();
 
     int32_t init();
 
-    int32_t readAxis(float *x_axis, float *y_axis, float *z_axis);
+    int32_t readAxis(acceleration_t &acceleration);
 
 private:
     axis3bit16_t data_raw_acceleration;
-    float acceleration_mg[3];
     uint8_t whoamI;
     uint8_t tx_buffer[1000];
 

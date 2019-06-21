@@ -117,10 +117,12 @@ int32_t Lis2dh12::init() {
     return error;
 }
 
-int32_t Lis2dh12::readAxis(float *x_axis, float *y_axis, float *z_axis){
+int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
     uint8_t ready;
     int32_t error;
-
+    float x = 0.0;
+    float y = 0.0;
+    float z = 0.0;
     /*
      * Read output only if new value available
      */
@@ -130,12 +132,13 @@ int32_t Lis2dh12::readAxis(float *x_axis, float *y_axis, float *z_axis){
         /* Read accelerometer data */
         memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-        *x_axis =
-                lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);
-        *y_axis =
-                lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
-        *z_axis =
-                lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
+        x = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);
+        y = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
+        z = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
+
+        acceleration.x_axis = (int32_t)(x * 100);
+        acceleration.y_axis = (int32_t)(y * 100);
+        acceleration.z_axis = (int32_t)(z * 100);
     }
     return error;
 }
