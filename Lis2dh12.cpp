@@ -25,7 +25,6 @@ int32_t Lis2dh12::platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSiz
     }
 
     *cs = 1;
-    EDEBUG_PRINTF("READ\r\n");
     return retVal;
 }
 
@@ -47,7 +46,6 @@ int32_t Lis2dh12::platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSi
     }
 
     *cs = 1;
-    EDEBUG_PRINTF("WRITE\r\n");
     return retVal;
 }
 
