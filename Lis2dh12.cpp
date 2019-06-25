@@ -88,6 +88,8 @@ int32_t Lis2dh12::init() {
     {
         EDEBUG_PRINTF("Device not found\r\n");
         return 0xffff;
+    }else{
+        EDEBUG_PRINTF("Device ID check OK. Initialize device...\r\n");
     }
     if(error) return error;
 
@@ -110,9 +112,29 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * Set device in continuous mode with 12 bit resol.
+     * Set device in continuous mode with 12 bit resolution.
      */
     error = lis2dh12_operating_mode_set(&dev_ctx, LIS2DH12_HR_12bit);
+    if(error) return error;
+
+    /*
+     * Enable FIFO
+     */
+    error = lis2dh12_fifo_set(&dev_ctx, 1);
+    if(error) return error;
+
+    /*
+     * select FIFO mode
+     */
+    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
+    if(error) return error;
+
+    /*
+     * generate interrupt for fifo overrun
+     */
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    ctrlReg3.i1_overrun = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
 
     return error;
 }
@@ -132,7 +154,7 @@ int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
         /* Read accelerometer data */
         memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-        x = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);
+        x = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);            //functions according to full scale and resolution
         y = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
         z = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
 
