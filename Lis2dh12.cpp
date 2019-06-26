@@ -94,6 +94,14 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
+     * generate interrupt for fifo overrun
+     */
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    ctrlReg3.i1_overrun = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if(error) return error;
+
+    /*
      *  Enable Block Data Update
      */
     error = lis2dh12_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
@@ -129,38 +137,71 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
     if(error) return error;
 
-    /*
-     * generate interrupt for fifo overrun
-     */
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    ctrlReg3.i1_overrun = 1;
-    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    while(true){
+        error = checkFifoStatus();
+        if(error) return error;
+        wait_ms(200);
+    }
+
+    return error;
+}
+
+int32_t Lis2dh12::checkFifoStatus() {
+    int32_t error;
+    uint8_t fifoDataLevel = 0;
+    uint8_t fifoOverrun = 0;
+    uint8_t ready;
+    acceleration_t acceleration;
+
+    error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
+    if(error) return error;
+
+    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
+    if(error) return error;
+
+    if (fifoOverrun) {
+        EDEBUG_PRINTF("FIFO OVERRUN\r\n");
+
+        for (int i = 0; i < 32; i++) {
+            /*
+             * Read output only if new value available
+             */
+            do {
+                wait_ms(1);
+                error = lis2dh12_xl_data_ready_get(&dev_ctx, &ready);
+                if(error) return error;
+            } while (!ready);
+            error = readAxis(acceleration);
+            if(!error) {
+                EDEBUG_PRINTF("X-Axis: %d \r\n", acceleration.x_axis);
+                EDEBUG_PRINTF("Y-Axis: %d \r\n", acceleration.y_axis);
+                EDEBUG_PRINTF("Z-Axis: %d \r\n", acceleration.z_axis);
+            } else EDEBUG_PRINTF("MEASURE ACCELERATION ERROR\r\n");
+        }
+
+    } else {
+        EDEBUG_PRINTF("No overrun. %d unread values in FIFO\r\n", fifoDataLevel);
+    }
 
     return error;
 }
 
 int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
-    uint8_t ready;
     int32_t error;
     float x = 0.0;
     float y = 0.0;
     float z = 0.0;
-    /*
-     * Read output only if new value available
-     */
-    error = lis2dh12_xl_data_ready_get(&dev_ctx, &ready);
-    if (ready)
-    {
-        /* Read accelerometer data */
-        memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
-        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-        x = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);            //functions according to full scale and resolution
-        y = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
-        z = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
 
-        acceleration.x_axis = (int32_t)(x * 100);
-        acceleration.y_axis = (int32_t)(y * 100);
-        acceleration.z_axis = (int32_t)(z * 100);
-    }
+    /* Read accelerometer data */
+    memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
+    error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+    x = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);            //functions according to full scale and resolution
+    y = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
+    z = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
+
+    acceleration.x_axis = (int32_t)(x * 100);
+    acceleration.y_axis = (int32_t)(y * 100);
+    acceleration.z_axis = (int32_t)(z * 100);
+
     return error;
 }
