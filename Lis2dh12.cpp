@@ -100,21 +100,9 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * Set Output Data Rate to 1Hz
-     */
-    error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_1Hz);
-    if(error) return error;
-
-    /*
      * Set full scale to 2g
      */
     error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
-    if(error) return error;
-
-    /*
-     * Set device in continuous mode with 12 bit resolution.
-     */
-    error = lis2dh12_operating_mode_set(&dev_ctx, LIS2DH12_HR_12bit);
     if(error) return error;
 
     /*
@@ -135,6 +123,18 @@ int32_t Lis2dh12::init() {
     lis2dh12_ctrl_reg3_t ctrlReg3;
     ctrlReg3.i1_overrun = 1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if(error) return error;
+
+    /*
+     * Set device in continuous mode with 10 bit resolution.
+     */
+    error = lis2dh12_operating_mode_set(&dev_ctx, LIS2DH12_NM_10bit);
+    if(error) return error;
+
+    /*
+     * Set Output Data Rate to 1Hz
+     */
+    error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_1Hz);
     if(error) return error;
 
     while(true){
@@ -200,9 +200,9 @@ int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
     /* Read accelerometer data */
     memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
     error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-    x = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[0]);            //functions according to full scale and resolution
-    y = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
-    z = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
+    x = lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[0]);            //functions according to full scale and resolution
+    y = lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[1]);
+    z = lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]);
 
     acceleration.x_axis = (int32_t)(x * 10);
     acceleration.y_axis = (int32_t)(y * 10);
