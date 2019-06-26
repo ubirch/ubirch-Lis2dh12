@@ -94,14 +94,6 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * generate interrupt for fifo overrun
-     */
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    ctrlReg3.i1_overrun = 1;
-    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
-    if(error) return error;
-
-    /*
      *  Enable Block Data Update
      */
     error = lis2dh12_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
@@ -137,6 +129,14 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
     if(error) return error;
 
+    /*
+     * generate interrupt for fifo overrun
+     */
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    ctrlReg3.i1_overrun = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if(error) return error;
+
     while(true){
         error = checkFifoStatus();
         if(error) return error;
@@ -161,6 +161,13 @@ int32_t Lis2dh12::checkFifoStatus() {
 
     if (fifoOverrun) {
         EDEBUG_PRINTF("FIFO OVERRUN\r\n");
+        lis2dh12_int1_src_t int1Src;
+        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
+        if(int1Src.ia) {
+            EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
+        } else {
+            EDEBUG_PRINTF("INT1_SRC: IA = 0 -> no interrupt generated \r\n");
+        }
 
         for (int i = 0; i < 32; i++) {
             /*
@@ -173,9 +180,7 @@ int32_t Lis2dh12::checkFifoStatus() {
             } while (!ready);
             error = readAxis(acceleration);
             if(!error) {
-                EDEBUG_PRINTF("X-Axis: %d \r\n", acceleration.x_axis);
-                EDEBUG_PRINTF("Y-Axis: %d \r\n", acceleration.y_axis);
-                EDEBUG_PRINTF("Z-Axis: %d \r\n", acceleration.z_axis);
+                EDEBUG_PRINTF("%d.) X: %d | Y: %d | Z: %d \r\n", i, acceleration.x_axis, acceleration.y_axis, acceleration.z_axis);
             } else EDEBUG_PRINTF("MEASURE ACCELERATION ERROR\r\n");
         }
 
@@ -199,9 +204,9 @@ int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
     y = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[1]);
     z = lis2dh12_from_fs2_hr_to_mg(data_raw_acceleration.i16bit[2]);
 
-    acceleration.x_axis = (int32_t)(x * 100);
-    acceleration.y_axis = (int32_t)(y * 100);
-    acceleration.z_axis = (int32_t)(z * 100);
+    acceleration.x_axis = (int32_t)(x * 10);
+    acceleration.y_axis = (int32_t)(y * 10);
+    acceleration.z_axis = (int32_t)(z * 10);
 
     return error;
 }
