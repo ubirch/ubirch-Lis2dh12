@@ -117,13 +117,6 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
     if(error) return error;
 
-    /*
-     * set FIFO watermark
-     */
-    uint8_t fifoWtm = 16;
-    error = lis2dh12_fifo_watermark_set(&dev_ctx, fifoWtm);
-    if(error) return error;
-
 
     /*
      * trigger interrupt on int1 pin
@@ -132,11 +125,10 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * generate interrupt for fifo overrun / watermark
+     * generate interrupt for fifo overrun
      */
     lis2dh12_ctrl_reg3_t ctrlReg3;
     ctrlReg3.i1_overrun = 1;
-    ctrlReg3.i1_wtm =1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
 
@@ -180,27 +172,20 @@ int32_t Lis2dh12::init() {
 
 int32_t Lis2dh12::checkFifoStatus() {
     int32_t error;
-    lis2dh12_fifo_src_reg_t fifoSrcReg;
     uint8_t fifoDataLevel = 0;
+    uint8_t fifoOverrun = 0;
     acceleration_t acceleration;
-    lis2dh12_int1_src_t int1Src;
 
-    error =lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
+    error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
     if(error) return error;
 
-    if(fifoSrcReg.wtm) {
-        EDEBUG_PRINTF("FIFO WATERMARK REACHED\r\n");
-        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);   //clearing latched interrupt
-        if(int1Src.ia) {
-            EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
-        } else {
-            EDEBUG_PRINTF("INT1_SRC: IA = 0 -> no interrupt generated \r\n");
-        }
-    }
+    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
+    if(error) return error;
 
-    if (fifoSrcReg.ovrn_fifo) {
+    if (fifoOverrun) {
         EDEBUG_PRINTF("FIFO OVERRUN\r\n");
-        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);   //clearing latched interrupt
+        lis2dh12_int1_src_t int1Src;
+        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
         if(int1Src.ia) {
             EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
         } else {
@@ -211,9 +196,7 @@ int32_t Lis2dh12::checkFifoStatus() {
             error = readAxis(acceleration);
             if(!error) {
                 EDEBUG_PRINTF("%d.) X: %d | Y: %d | Z: %d | ", i, acceleration.x_axis, acceleration.y_axis, acceleration.z_axis);
-            } else {
-                EDEBUG_PRINTF("MEASURE ACCELERATION ERROR\r\n");
-            }
+            } else return error;
 
             error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
             if(!error) {
@@ -230,20 +213,13 @@ int32_t Lis2dh12::checkFifoStatus() {
 
 int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
     int32_t error;
-    float x = 0.0;
-    float y = 0.0;
-    float z = 0.0;
 
     /* Read accelerometer data */
     memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
     error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-    x = lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[0]);            //functions according to full scale and resolution
-    y = lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[1]);
-    z = lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]);
-
-    acceleration.x_axis = (int32_t)(x * 10);
-    acceleration.y_axis = (int32_t)(y * 10);
-    acceleration.z_axis = (int32_t)(z * 10);
+    acceleration.x_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[0]));            //functions relate to full scale and resolution
+    acceleration.y_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[1]));
+    acceleration.z_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]));
 
     return error;
 }
