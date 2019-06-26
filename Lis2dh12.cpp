@@ -124,6 +124,13 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_fifo_watermark_set(&dev_ctx, fifoWtm);
     if(error) return error;
 
+
+    /*
+     * trigger interrupt on int1 pin
+     */
+    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
+    if(error) return error;
+
     /*
      * generate interrupt for fifo overrun / watermark
      */
@@ -153,10 +160,19 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_1Hz);
     if(error) return error;
 
+    /*
+     * Read (-> clear) REFERENCE register
+     */
+    uint8_t buff;
+    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
+    if(error) return error;
+
+
+
     while(true){
         error = checkFifoStatus();
         if(error) return error;
-        wait_ms(500);
+        wait_ms(1000);
     }
 
     return error;
@@ -164,20 +180,26 @@ int32_t Lis2dh12::init() {
 
 int32_t Lis2dh12::checkFifoStatus() {
     int32_t error;
+    lis2dh12_fifo_src_reg_t fifoSrcReg;
     uint8_t fifoDataLevel = 0;
-    uint8_t fifoOverrun = 0;
-    uint8_t ready;
     acceleration_t acceleration;
+    lis2dh12_int1_src_t int1Src;
 
-    error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
+    error =lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
     if(error) return error;
 
-    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
-    if(error) return error;
+    if(fifoSrcReg.wtm) {
+        EDEBUG_PRINTF("FIFO WATERMARK REACHED\r\n");
+        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);   //clearing latched interrupt
+        if(int1Src.ia) {
+            EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
+        } else {
+            EDEBUG_PRINTF("INT1_SRC: IA = 0 -> no interrupt generated \r\n");
+        }
+    }
 
-    if (fifoOverrun) {
+    if (fifoSrcReg.ovrn_fifo) {
         EDEBUG_PRINTF("FIFO OVERRUN\r\n");
-        lis2dh12_int1_src_t int1Src;
         error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);   //clearing latched interrupt
         if(int1Src.ia) {
             EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
@@ -195,12 +217,12 @@ int32_t Lis2dh12::checkFifoStatus() {
 
             error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
             if(!error) {
-                EDEBUG_PRINTF("%d unread values in FIFO \r\n", fifoDataLevel);
+                EDEBUG_PRINTF("(%d unread values in FIFO) \r\n", fifoDataLevel);
             } else return error;
         }
 
     } else {
-        EDEBUG_PRINTF("No overrun. %d unread values in FIFO\r\n", fifoDataLevel);
+        EDEBUG_PRINTF("No overrun. %d unread values in FIFO\r\n", fifoSrcReg.fss);
     }
 
     return error;
