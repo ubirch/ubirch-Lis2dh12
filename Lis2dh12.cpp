@@ -118,12 +118,28 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * generate interrupt for fifo overrun
+     * set FIFO watermark
+     */
+    uint8_t fifoWtm = 16;
+    error = lis2dh12_fifo_watermark_set(&dev_ctx, fifoWtm);
+    if(error) return error;
+
+    /*
+     * generate interrupt for fifo overrun / watermark
      */
     lis2dh12_ctrl_reg3_t ctrlReg3;
     ctrlReg3.i1_overrun = 1;
+    ctrlReg3.i1_wtm =1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
+
+
+    /*
+     * latch interrupt request (read INT1_SRC (31h) to reset)
+     */
+    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
+    if(error) return error;
+
 
     /*
      * Set device in continuous mode with 10 bit resolution.
@@ -140,7 +156,7 @@ int32_t Lis2dh12::init() {
     while(true){
         error = checkFifoStatus();
         if(error) return error;
-        wait_ms(200);
+        wait_ms(500);
     }
 
     return error;
@@ -162,7 +178,7 @@ int32_t Lis2dh12::checkFifoStatus() {
     if (fifoOverrun) {
         EDEBUG_PRINTF("FIFO OVERRUN\r\n");
         lis2dh12_int1_src_t int1Src;
-        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
+        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);   //clearing latched interrupt
         if(int1Src.ia) {
             EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
         } else {
@@ -170,18 +186,17 @@ int32_t Lis2dh12::checkFifoStatus() {
         }
 
         for (int i = 0; i < 32; i++) {
-            /*
-             * Read output only if new value available
-             */
-            do {
-                wait_ms(1);
-                error = lis2dh12_xl_data_ready_get(&dev_ctx, &ready);
-                if(error) return error;
-            } while (!ready);
             error = readAxis(acceleration);
             if(!error) {
-                EDEBUG_PRINTF("%d.) X: %d | Y: %d | Z: %d \r\n", i, acceleration.x_axis, acceleration.y_axis, acceleration.z_axis);
-            } else EDEBUG_PRINTF("MEASURE ACCELERATION ERROR\r\n");
+                EDEBUG_PRINTF("%d.) X: %d | Y: %d | Z: %d | ", i, acceleration.x_axis, acceleration.y_axis, acceleration.z_axis);
+            } else {
+                EDEBUG_PRINTF("MEASURE ACCELERATION ERROR\r\n");
+            }
+
+            error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
+            if(!error) {
+                EDEBUG_PRINTF("%d unread values in FIFO \r\n", fifoDataLevel);
+            } else return error;
         }
 
     } else {
