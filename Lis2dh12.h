@@ -23,7 +23,7 @@ public:
 
     int32_t init();
 
-    int32_t readAxis(acceleration_t &acceleration);
+    int32_t readAxis(acceleration_t& acceleration);
 
 private:
     axis3bit16_t data_raw_acceleration;

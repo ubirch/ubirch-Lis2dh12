@@ -117,6 +117,13 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
     if(error) return error;
 
+    /*
+     * set FIFO watermark
+     */
+    uint8_t fifoWtm = 1;
+    error = lis2dh12_fifo_watermark_set(&dev_ctx, fifoWtm);
+    if(error) return error;
+
 
     /*
      * trigger interrupt on int1 pin
@@ -125,10 +132,11 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * generate interrupt for fifo overrun
+     * generate interrupt for fifo overrun / watermark
      */
     lis2dh12_ctrl_reg3_t ctrlReg3;
     ctrlReg3.i1_overrun = 1;
+    ctrlReg3.i1_wtm =1;         //TODO take this line out, just for testing
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
 
@@ -157,15 +165,15 @@ int32_t Lis2dh12::init() {
      */
     uint8_t buff;
     error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
-    if(error) return error;
-
-
-
-    while(true){
-        error = checkFifoStatus();
-        if(error) return error;
-        wait_ms(1000);
-    }
+//    if(error) return error;
+//
+//
+//
+//    while(true){
+//        error = checkFifoStatus();
+//        if(error) return error;
+//        wait_ms(1000);
+//    }
 
     return error;
 }
@@ -185,7 +193,7 @@ int32_t Lis2dh12::checkFifoStatus() {
     if (fifoOverrun) {
         EDEBUG_PRINTF("FIFO OVERRUN\r\n");
         lis2dh12_int1_src_t int1Src;
-        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
+        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);       // clearing latched interrupt here
         if(int1Src.ia) {
             EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
         } else {
@@ -205,13 +213,13 @@ int32_t Lis2dh12::checkFifoStatus() {
         }
 
     } else {
-        EDEBUG_PRINTF("No overrun. %d unread values in FIFO\r\n", fifoSrcReg.fss);
+        EDEBUG_PRINTF("No overrun. %d unread values in FIFO\r\n", fifoDataLevel);
     }
 
     return error;
 }
 
-int32_t Lis2dh12::readAxis(acceleration_t &acceleration) {
+int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     int32_t error;
 
     /* Read accelerometer data */
