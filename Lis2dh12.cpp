@@ -98,48 +98,80 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * Set full scale to 2g
+     * Set Output Data Rate
      */
-    error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
-    if(error) return error;
-
-    /*
-     * Enable FIFO
-     */
-    error = lis2dh12_fifo_set(&dev_ctx, 1);
-    if(error) return error;
-
-    /*
-     * select FIFO mode
-     */
-    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
-    if(error) return error;
-
-    /*
-     * trigger interrupt on int1 pin
-     */
-    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
-    if(error) return error;
-
-    /*
-     * generate interrupt for fifo overrun
-     */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    ctrlReg3.i1_overrun = 1;
-    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
-    if(error) return error;
-
+    error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_10Hz);
+    if (error) return error;
 
     /*
      * Set device in continuous mode with 10 bit resolution.
      */
     error = lis2dh12_operating_mode_set(&dev_ctx, LIS2DH12_NM_10bit);
+    if (error) return error;
+
+    /*
+     * Set full scale to 2g
+     */
+    error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
+    if(error) return error;
+
+//    /*
+//     * Enable FIFO
+//     */
+//    error = lis2dh12_fifo_set(&dev_ctx, 1);
+//    if(error) return error;
+//
+//    /*
+//     * select FIFO mode
+//     */
+//    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
+//    if(error) return error;
+//
+//    /*
+//     * trigger interrupt on int1 pin
+//     */
+//    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
+//    if(error) return error;
+//
+    /*
+     * generate interrupt for fifo overrun / interrupt activity on INT1
+     */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    //ctrlReg3.i1_overrun = 1;
+    ctrlReg3.i1_ia1 = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
 
     /*
-     * Set Output Data Rate to 1Hz
+     * latch interrupt request (read INT1_SRC (31h) to reset)
      */
-    error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_1Hz);
+    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
+    if(error) return error;
+
+    /*
+     * Set threshold
+     * LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g
+     */
+    uint8_t threshold = 75; // = 1.2g at 2g full scale
+    error = lis2dh12_int1_gen_threshold_set(&dev_ctx, threshold);
+    if (error) return error;
+
+    /*
+     * Set duration
+     * LSb = 1/ODR
+     */
+    uint8_t duration = 2; // = 200 ms at 10 Hz
+    error = lis2dh12_int1_gen_duration_set(&dev_ctx, duration);
+    if (error) return error;
+
+    /*
+     * enable high event interrupts on Int1 pin
+     */
+    lis2dh12_int1_cfg_t int1Cfg = {0};
+    int1Cfg.xhie = 1;
+    int1Cfg.yhie = 1;
+    int1Cfg.zhie = 1;
+    error = lis2dh12_int1_gen_conf_set(&dev_ctx, &int1Cfg);
 
 //    /*
 //     * Read (-> clear) REFERENCE register
@@ -200,6 +232,16 @@ int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     acceleration.x_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[0]));            //functions relate to full scale and resolution
     acceleration.y_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[1]));
     acceleration.z_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]));
+    if (error) EDEBUG_PRINTF("ERROR reading accelerometer data \r\n");
+
+    /* reset latched interrupt */
+    lis2dh12_int1_src_t int1Src = {0};
+    error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);       // clearing latched interrupt here
+    if (int1Src.ia) {
+        EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
+    } else {
+        EDEBUG_PRINTF("INT1_SRC: IA = 0 -> no interrupt generated \r\n");
+    }
 
     return error;
 }
