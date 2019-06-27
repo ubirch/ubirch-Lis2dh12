@@ -29,6 +29,8 @@ public:
 
     int32_t checkFifoStatus();
 
+    uint8_t pollFifoOverrun();
+
 private:
     axis3bit16_t data_raw_acceleration;
     uint8_t whoamI;

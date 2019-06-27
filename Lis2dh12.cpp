@@ -136,7 +136,7 @@ int32_t Lis2dh12::init() {
      */
     lis2dh12_ctrl_reg3_t ctrlReg3;
     ctrlReg3.i1_overrun = 1;
-    ctrlReg3.i1_wtm =1;         //TODO take this line out, just for testing
+    ctrlReg3.i1_wtm = 1;         //TODO take this line out, just for testing
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
 
@@ -230,4 +230,11 @@ int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     acceleration.z_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]));
 
     return error;
+}
+
+uint8_t Lis2dh12::pollFifoOverrun() {
+    uint8_t fifoOverrun = 0;
+    int32_t error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
+    if (error) EDEBUG_PRINTF("ERROR POLLING\r\n");
+    return fifoOverrun;
 }
