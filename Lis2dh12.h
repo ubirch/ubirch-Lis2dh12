@@ -29,6 +29,9 @@ public:
 
     int32_t checkFifoStatus();
 
+	void readAllRegisters(void);
+
+
     uint8_t pollFifoOverrun();
 
 private:

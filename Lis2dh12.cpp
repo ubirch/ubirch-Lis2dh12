@@ -134,9 +134,9 @@ int32_t Lis2dh12::init() {
     /*
      * generate interrupt for fifo overrun / watermark
      */
-    lis2dh12_ctrl_reg3_t ctrlReg3;
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
     ctrlReg3.i1_overrun = 1;
-    ctrlReg3.i1_wtm = 1;         //TODO take this line out, just for testing
+    EDEBUG_PRINTF("CTRL_REG3 = %02x\r\n", ctrlReg3);
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
 
@@ -230,6 +230,15 @@ int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     acceleration.z_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]));
 
     return error;
+}
+
+void Lis2dh12::readAllRegisters(void){
+
+	uint8_t data[10];
+	for (int i = 0; i < 0x3f; ++i) {
+		lis2dh12_read_reg(&dev_ctx, i, data, 1);
+		EDEBUG_PRINTF("REG: %02x = %02x\r\n", i, data[0]);
+	}
 }
 
 uint8_t Lis2dh12::pollFifoOverrun() {
