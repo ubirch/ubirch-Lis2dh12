@@ -8,10 +8,12 @@
 #include "mbed.h"
 #include "lis2dh12_reg.h"
 
+#define ACC_ARRAYSIZE 32    //size of FIFO
+
 typedef struct {
-    int32_t x_axis;
-    int32_t y_axis;
-    int32_t z_axis;
+    int16_t x_axis;
+    int16_t y_axis;
+    int16_t z_axis;
 }acceleration_t;
 
 class Lis2dh12 {
@@ -24,6 +26,8 @@ public:
     int32_t init();
 
     int32_t readAxis(acceleration_t& acceleration);
+
+    int32_t checkFifoStatus();
 
 private:
     axis3bit16_t data_raw_acceleration;
@@ -38,7 +42,6 @@ public:
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
-    int32_t checkFifoStatus();
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
