@@ -65,8 +65,6 @@ Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs):
         spi(_spi),
         cs(_cs)
 {
-    //dev_ctx = new lis2dh12_ctx_t;
-
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
     dev_ctx.handle = this;
@@ -118,33 +116,17 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * set FIFO watermark
-     */
-    uint8_t fifoWtm = 1;
-    error = lis2dh12_fifo_watermark_set(&dev_ctx, fifoWtm);
-    if(error) return error;
-
-
-    /*
      * trigger interrupt on int1 pin
      */
     error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
     if(error) return error;
 
     /*
-     * generate interrupt for fifo overrun / watermark
+     * generate interrupt for fifo overrun
      */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
     ctrlReg3.i1_overrun = 1;
-    EDEBUG_PRINTF("CTRL_REG3 = %02x\r\n", ctrlReg3);
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
-    if(error) return error;
-
-
-    /*
-     * latch interrupt request (read INT1_SRC (31h) to reset)
-     */
-    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
     if(error) return error;
 
 
@@ -158,22 +140,12 @@ int32_t Lis2dh12::init() {
      * Set Output Data Rate to 1Hz
      */
     error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_1Hz);
-    if(error) return error;
 
-    /*
-     * Read (-> clear) REFERENCE register
-     */
-    uint8_t buff;
-    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
-//    if(error) return error;
-//
-//
-//
-//    while(true){
-//        error = checkFifoStatus();
-//        if(error) return error;
-//        wait_ms(1000);
-//    }
+//    /*
+//     * Read (-> clear) REFERENCE register
+//     */
+//    uint8_t buff;
+//    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
 
     return error;
 }
@@ -192,7 +164,7 @@ int32_t Lis2dh12::checkFifoStatus() {
 
     if (fifoOverrun) {
         EDEBUG_PRINTF("FIFO OVERRUN\r\n");
-        lis2dh12_int1_src_t int1Src;
+        lis2dh12_int1_src_t int1Src = {0};
         error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);       // clearing latched interrupt here
         if(int1Src.ia) {
             EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
@@ -239,11 +211,4 @@ void Lis2dh12::readAllRegisters(void){
 		lis2dh12_read_reg(&dev_ctx, i, data, 1);
 		EDEBUG_PRINTF("REG: %02x = %02x\r\n", i, data[0]);
 	}
-}
-
-uint8_t Lis2dh12::pollFifoOverrun() {
-    uint8_t fifoOverrun = 0;
-    int32_t error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
-    if (error) EDEBUG_PRINTF("ERROR POLLING\r\n");
-    return fifoOverrun;
 }
