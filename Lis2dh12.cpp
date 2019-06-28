@@ -299,9 +299,10 @@ int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     /* Read accelerometer data */
     memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
     error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-    acceleration.x_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[0]));            //functions relate to full scale and resolution
-    acceleration.y_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[1]));
-    acceleration.z_axis = (int32_t) (lis2dh12_from_fs2_nm_to_mg(data_raw_acceleration.i16bit[2]));
+    acceleration.x_axis = convert_to_mg_fs2(
+            data_raw_acceleration.i16bit[0]);   //functions relate to selected full scale
+    acceleration.y_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[1]);
+    acceleration.z_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[2]);
     if (error) EDEBUG_PRINTF("ERROR reading accelerometer data \r\n");
 
     /* reset latched interrupt */
@@ -314,6 +315,14 @@ int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     }
 
     return error;
+}
+
+int16_t Lis2dh12::convert_to_mg_fs2(int16_t rawData) {
+    return (rawData >> 4);
+}
+
+int16_t Lis2dh12::convert_to_mg_fs4(int16_t rawData) {
+    return (rawData >> 3);
 }
 
 void Lis2dh12::readAllRegisters(void){

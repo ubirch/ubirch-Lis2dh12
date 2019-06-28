@@ -51,6 +51,10 @@ public:
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
     int32_t setThreshold(uint16_t thresholdInMg);
+
+    int16_t convert_to_mg_fs2(int16_t rawData);
+
+    int16_t convert_to_mg_fs4(int16_t rawData);
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
