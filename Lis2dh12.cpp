@@ -61,9 +61,11 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
     return 0;
 }
 
-Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs):
+Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs) :
         spi(_spi),
-        cs(_cs)
+        cs(_cs),
+        thresholdInMg(_thresholdInMg),
+        durationInMs(_durationInMs)
 {
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
@@ -81,6 +83,7 @@ int32_t Lis2dh12::init() {
     /*
      *  Check device ID
      */
+    uint8_t whoamI;
     error = lis2dh12_device_id_get(&dev_ctx, &whoamI);
     if (whoamI != LIS2DH12_ID)
     {
@@ -149,19 +152,15 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * Set threshold
-     * LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g
+     * Set threshold in mg
      */
-    uint8_t threshold = 75; // = 1.2g at 2g full scale
-    error = lis2dh12_int1_gen_threshold_set(&dev_ctx, threshold);
+    error = setThreshold(thresholdInMg);
     if (error) return error;
 
     /*
-     * Set duration
-     * LSb = 1/ODR
+     * Set duration in ms
      */
-    uint8_t duration = 2; // = 200 ms at 10 Hz
-    error = lis2dh12_int1_gen_duration_set(&dev_ctx, duration);
+    error = setDuration(durationInMs);
     if (error) return error;
 
     /*
@@ -179,6 +178,76 @@ int32_t Lis2dh12::init() {
 //    uint8_t buff;
 //    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
 
+    return error;
+}
+
+int32_t Lis2dh12::setThreshold(uint16_t thresholdInMg) {
+    int32_t error;
+    uint8_t thresholdBits;
+    lis2dh12_fs_t fs;
+
+    error = lis2dh12_full_scale_get(&dev_ctx, &fs);
+    if (error) return error;
+
+    /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
+    switch (fs) {
+        case LIS2DH12_2g:
+            thresholdBits = (uint8_t) (thresholdInMg / 16);
+            break;
+        case LIS2DH12_4g:
+            thresholdBits = (uint8_t) (thresholdInMg / 32);
+            break;
+        case LIS2DH12_8g:
+            thresholdBits = (uint8_t) (thresholdInMg / 62);
+            break;
+        case LIS2DH12_16g:
+            thresholdBits = (uint8_t) (thresholdInMg / 186);
+            break;
+        default:
+            thresholdBits = 0;
+            break;
+    }
+
+    error = lis2dh12_int1_gen_threshold_set(&dev_ctx, thresholdBits);
+    return error;
+}
+
+int32_t Lis2dh12::setDuration(uint16_t durationInMs) {
+    int32_t error;
+    uint8_t durationBits;
+    lis2dh12_odr_t odr;
+
+    error = lis2dh12_data_rate_get(&dev_ctx, &odr);
+    if (error) return error;
+
+    switch (odr) {
+        case LIS2DH12_ODR_1Hz:
+            durationBits = (uint8_t) (durationInMs / 1000);
+            break;
+        case LIS2DH12_ODR_10Hz:
+            durationBits = (uint8_t) (durationInMs / 100);
+            break;
+        case LIS2DH12_ODR_25Hz:
+            durationBits = (uint8_t) (durationInMs / 40);
+            break;
+        case LIS2DH12_ODR_50Hz:
+            durationBits = (uint8_t) (durationInMs / 20);
+            break;
+        case LIS2DH12_ODR_100Hz:
+            durationBits = (uint8_t) (durationInMs / 10);
+            break;
+        case LIS2DH12_ODR_200Hz:
+            durationBits = (uint8_t) (durationInMs / 5);
+            break;
+        case LIS2DH12_ODR_400Hz:
+            durationBits = (uint8_t) ((durationInMs * 2) / 5);
+            break;
+        default:
+            durationBits = 0;
+            break;
+    }
+
+    error = lis2dh12_int1_gen_duration_set(&dev_ctx, durationBits);
     return error;
 }
 
@@ -225,6 +294,7 @@ int32_t Lis2dh12::checkFifoStatus() {
 
 int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     int32_t error;
+    axis3bit16_t data_raw_acceleration;
 
     /* Read accelerometer data */
     memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));

@@ -19,34 +19,38 @@ typedef struct {
 class Lis2dh12 {
 public:
 
-    Lis2dh12(SPI *_spi, DigitalOut *_cs);
+    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs);
 
     virtual ~Lis2dh12();
 
     int32_t init();
 
-    int32_t readAxis(acceleration_t& acceleration);
+    int32_t setDuration(uint16_t durationInMs);
 
-    int32_t checkFifoStatus();
+    int32_t readAxis(acceleration_t& acceleration);
 
 	void readAllRegisters(void);
 
 
+    int32_t checkFifoStatus();
+
     uint8_t pollFifoOverrun();
 
 private:
-    axis3bit16_t data_raw_acceleration;
-    uint8_t whoamI;
     uint8_t tx_buffer[1000];
 
     SPI *spi;
     DigitalOut *cs;
     lis2dh12_ctx_t dev_ctx;
 
+    uint16_t thresholdInMg;
+    uint16_t durationInMs;
+
 public:
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
+    int32_t setThreshold(uint16_t thresholdInMg);
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
