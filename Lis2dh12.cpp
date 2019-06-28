@@ -118,24 +118,24 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
     if(error) return error;
 
-//    /*
-//     * Enable FIFO
-//     */
-//    error = lis2dh12_fifo_set(&dev_ctx, 1);
-//    if(error) return error;
-//
-//    /*
-//     * select FIFO mode
-//     */
-//    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
-//    if(error) return error;
-//
-//    /*
-//     * trigger interrupt on int1 pin
-//     */
-//    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
-//    if(error) return error;
-//
+    /*
+     * Enable FIFO
+     */
+    error = lis2dh12_fifo_set(&dev_ctx, 1);
+    if (error) return error;
+
+    /*
+     * select FIFO mode
+     */
+    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_STREAM_TO_FIFO_MODE);
+    if (error) return error;
+
+    /*
+     * trigger interrupt on int1 pin
+     */
+    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
+    if (error) return error;
+
     /*
      * generate interrupt for fifo overrun / interrupt activity on INT1
      */
@@ -181,7 +181,7 @@ int32_t Lis2dh12::init() {
     return error;
 }
 
-int32_t Lis2dh12::setThreshold(uint16_t thresholdInMg) {
+int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     int32_t error;
     uint8_t thresholdBits;
     lis2dh12_fs_t fs;
@@ -192,16 +192,16 @@ int32_t Lis2dh12::setThreshold(uint16_t thresholdInMg) {
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
     switch (fs) {
         case LIS2DH12_2g:
-            thresholdBits = (uint8_t) (thresholdInMg / 16);
+            thresholdBits = (uint8_t) (userThresholdInMg >> 4);
             break;
         case LIS2DH12_4g:
-            thresholdBits = (uint8_t) (thresholdInMg / 32);
+            thresholdBits = (uint8_t) (userThresholdInMg >> 5);
             break;
         case LIS2DH12_8g:
-            thresholdBits = (uint8_t) (thresholdInMg / 62);
+            thresholdBits = (uint8_t) (userThresholdInMg / 62);
             break;
         case LIS2DH12_16g:
-            thresholdBits = (uint8_t) (thresholdInMg / 186);
+            thresholdBits = (uint8_t) (userThresholdInMg / 186);
             break;
         default:
             thresholdBits = 0;
@@ -212,7 +212,7 @@ int32_t Lis2dh12::setThreshold(uint16_t thresholdInMg) {
     return error;
 }
 
-int32_t Lis2dh12::setDuration(uint16_t durationInMs) {
+int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     int32_t error;
     uint8_t durationBits;
     lis2dh12_odr_t odr;
@@ -222,25 +222,25 @@ int32_t Lis2dh12::setDuration(uint16_t durationInMs) {
 
     switch (odr) {
         case LIS2DH12_ODR_1Hz:
-            durationBits = (uint8_t) (durationInMs / 1000);
+            durationBits = (uint8_t) (userDurationInMs / 1000);
             break;
         case LIS2DH12_ODR_10Hz:
-            durationBits = (uint8_t) (durationInMs / 100);
+            durationBits = (uint8_t) (userDurationInMs / 100);
             break;
         case LIS2DH12_ODR_25Hz:
-            durationBits = (uint8_t) (durationInMs / 40);
+            durationBits = (uint8_t) (userDurationInMs / 40);
             break;
         case LIS2DH12_ODR_50Hz:
-            durationBits = (uint8_t) (durationInMs / 20);
+            durationBits = (uint8_t) (userDurationInMs / 20);
             break;
         case LIS2DH12_ODR_100Hz:
-            durationBits = (uint8_t) (durationInMs / 10);
+            durationBits = (uint8_t) (userDurationInMs / 10);
             break;
         case LIS2DH12_ODR_200Hz:
-            durationBits = (uint8_t) (durationInMs / 5);
+            durationBits = (uint8_t) (userDurationInMs / 5);
             break;
         case LIS2DH12_ODR_400Hz:
-            durationBits = (uint8_t) ((durationInMs * 2) / 5);
+            durationBits = (uint8_t) ((userDurationInMs * 2) / 5);
             break;
         default:
             durationBits = 0;
@@ -255,7 +255,6 @@ int32_t Lis2dh12::checkFifoStatus() {
     int32_t error;
     uint8_t fifoDataLevel = 0;
     uint8_t fifoOverrun = 0;
-    acceleration_t acceleration;
 
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
     if(error) return error;
@@ -264,29 +263,9 @@ int32_t Lis2dh12::checkFifoStatus() {
     if(error) return error;
 
     if (fifoOverrun) {
-        EDEBUG_PRINTF("FIFO OVERRUN\r\n");
-        lis2dh12_int1_src_t int1Src = {0};
-        error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);       // clearing latched interrupt here
-        if(int1Src.ia) {
-            EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
-        } else {
-            EDEBUG_PRINTF("INT1_SRC: IA = 0 -> no interrupt generated \r\n");
-        }
-
-        for (int i = 0; i < 32; i++) {
-            error = readAxis(acceleration);
-            if(!error) {
-                EDEBUG_PRINTF("%d.) X: %d | Y: %d | Z: %d | ", i, acceleration.x_axis, acceleration.y_axis, acceleration.z_axis);
-            } else return error;
-
-            error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
-            if(!error) {
-                EDEBUG_PRINTF("(%d unread values in FIFO) \r\n", fifoDataLevel);
-            } else return error;
-        }
-
+        EDEBUG_PRINTF("FIFO overrun. %d unread values in FIFO\r\n", fifoDataLevel);
     } else {
-        EDEBUG_PRINTF("No overrun. %d unread values in FIFO\r\n", fifoDataLevel);
+        EDEBUG_PRINTF("No FIFO overrun. %d unread values in FIFO\r\n", fifoDataLevel);
     }
 
     return error;
@@ -296,29 +275,32 @@ int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
     int32_t error;
     axis3bit16_t data_raw_acceleration;
 
+    error = checkFifoStatus();
+    if (error) return error;
+
     /* Read accelerometer data */
     memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
     error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-    acceleration.x_axis = convert_to_mg_fs2(
-            data_raw_acceleration.i16bit[0]);   //functions relate to selected full scale
+    if (error) return error;
+
+    /* following functions relate to selected full scale */
+    acceleration.x_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[0]);
     acceleration.y_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[1]);
     acceleration.z_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[2]);
-    if (error) EDEBUG_PRINTF("ERROR reading accelerometer data \r\n");
 
     /* reset latched interrupt */
     lis2dh12_int1_src_t int1Src = {0};
-    error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);       // clearing latched interrupt here
-    if (int1Src.ia) {
-        EDEBUG_PRINTF("INT1_SRC: IA = 1 -> interrupt generated \r\n");
-    } else {
-        EDEBUG_PRINTF("INT1_SRC: IA = 0 -> no interrupt generated \r\n");
-    }
+    error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
+
+    if (int1Src.xh) EDEBUG_PRINTF("acceleration > threshold on X-axis \r\n");
+    if (int1Src.yh) EDEBUG_PRINTF("acceleration > threshold on Y-axis \r\n");
+    if (int1Src.zh) EDEBUG_PRINTF("acceleration > threshold on Z-axis \r\n");
 
     return error;
 }
 
 int16_t Lis2dh12::convert_to_mg_fs2(int16_t rawData) {
-    return (rawData >> 4);
+    return (rawData >> 4);  //TODO check if safe to shift signed int
 }
 
 int16_t Lis2dh12::convert_to_mg_fs4(int16_t rawData) {
