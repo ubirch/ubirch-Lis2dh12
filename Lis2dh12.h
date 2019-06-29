@@ -24,13 +24,13 @@ public:
 
     int32_t init();
 
-    int32_t readAxis(acceleration_t& acceleration);
+    int32_t getAcceleration(acceleration_t &acceleration);
+
+    int16_t resetInterrupt();
 
 	void readAllRegisters(void);
 
     int32_t checkFifoStatus();
-
-    uint8_t pollFifoOverrun();
 
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
@@ -51,6 +51,7 @@ private:
     DigitalOut *cs;
     lis2dh12_ctx_t dev_ctx;
 
+    int16_t error;
     uint16_t thresholdInMg;
     uint16_t durationInMs;
 

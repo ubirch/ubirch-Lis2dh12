@@ -78,8 +78,6 @@ Lis2dh12::~Lis2dh12() {
 }
 
 int32_t Lis2dh12::init() {
-    int32_t error;
-
     /*
      *  Check device ID
      */
@@ -119,39 +117,6 @@ int32_t Lis2dh12::init() {
     if(error) return error;
 
     /*
-     * Enable FIFO
-     */
-    error = lis2dh12_fifo_set(&dev_ctx, 1);
-    if (error) return error;
-
-    /*
-     * select FIFO mode
-     */
-    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_STREAM_TO_FIFO_MODE);
-    if (error) return error;
-
-    /*
-     * trigger interrupt on int1 pin
-     */
-    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
-    if (error) return error;
-
-    /*
-     * generate interrupt for fifo overrun / interrupt activity on INT1
-     */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    //ctrlReg3.i1_overrun = 1;
-    ctrlReg3.i1_ia1 = 1;
-    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
-    if(error) return error;
-
-    /*
-     * latch interrupt request (read INT1_SRC (31h) to reset)
-     */
-    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
-    if(error) return error;
-
-    /*
      * Set threshold in mg
      */
     error = setThreshold(thresholdInMg);
@@ -164,13 +129,47 @@ int32_t Lis2dh12::init() {
     if (error) return error;
 
     /*
-     * enable high event interrupts on Int1 pin
+     * enable high event interrupts on Int1 pin (if acc > threshold for t > duration)
      */
     lis2dh12_int1_cfg_t int1Cfg = {0};
+//    int1Cfg.aoi = 1;
     int1Cfg.xhie = 1;
     int1Cfg.yhie = 1;
     int1Cfg.zhie = 1;
     error = lis2dh12_int1_gen_conf_set(&dev_ctx, &int1Cfg);
+    if (error) return error;
+
+    /*
+     * generate interrupt for fifo overrun / interrupt activity on INT1
+     */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+//    ctrlReg3.i1_overrun = 1;
+    ctrlReg3.i1_ia1 = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if(error) return error;
+
+    /*
+     * latch interrupt request (read INT1_SRC (31h) to reset)
+     */
+    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
+    if (error) return error;
+
+    /*
+     * Enable FIFO
+     */
+    error = lis2dh12_fifo_set(&dev_ctx, 1);
+    if (error) return error;
+
+    /*
+     * select FIFO mode
+     */
+    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
+    if (error) return error;
+
+    /*
+     * trigger FIFO interrupt on int1 pin
+     */
+    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
 
 //    /*
 //     * Read (-> clear) REFERENCE register
@@ -182,7 +181,6 @@ int32_t Lis2dh12::init() {
 }
 
 int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
-    int32_t error;
     uint8_t thresholdBits;
     lis2dh12_fs_t fs;
 
@@ -213,7 +211,6 @@ int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
 }
 
 int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
-    int32_t error;
     uint8_t durationBits;
     lis2dh12_odr_t odr;
 
@@ -252,7 +249,6 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
 }
 
 int32_t Lis2dh12::checkFifoStatus() {
-    int32_t error;
     uint8_t fifoDataLevel = 0;
     uint8_t fifoOverrun = 0;
 
@@ -263,38 +259,44 @@ int32_t Lis2dh12::checkFifoStatus() {
     if(error) return error;
 
     if (fifoOverrun) {
-        EDEBUG_PRINTF("FIFO overrun. %d unread values in FIFO\r\n", fifoDataLevel);
+        EDEBUG_PRINTF("overrun. %02d unread values in FIFO | ", fifoDataLevel);
     } else {
-        EDEBUG_PRINTF("No FIFO overrun. %d unread values in FIFO\r\n", fifoDataLevel);
+        EDEBUG_PRINTF("No ovrn. %02d unread values in FIFO | ", fifoDataLevel);
     }
 
     return error;
 }
 
-int32_t Lis2dh12::readAxis(acceleration_t& acceleration) {
-    int32_t error;
-    axis3bit16_t data_raw_acceleration;
+/* reset latched interrupt */
+int16_t Lis2dh12::resetInterrupt() {
+    lis2dh12_int1_src_t int1Src = {0};
 
     error = checkFifoStatus();
     if (error) return error;
 
+    error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
+
+    EDEBUG_PRINTF("IA: %d --- ", int1Src.ia);
+    EDEBUG_PRINTF("INT1 was caused by (acceleration > threshold) on ");
+    if (int1Src.xh) EDEBUG_PRINTF("X-axis ");
+    if (int1Src.yh) EDEBUG_PRINTF("Y-axis ");
+    if (int1Src.zh) EDEBUG_PRINTF("Z-axis ");
+    EDEBUG_PRINTF("\r\n");
+
+    return error;
+}
+
+int32_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
+    axis3bit16_t data_raw_acceleration;
+
     /* Read accelerometer data */
-    memset(data_raw_acceleration.u8bit, 0x00, 3*sizeof(int16_t));
+    memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
     error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-    if (error) return error;
 
     /* following functions relate to selected full scale */
     acceleration.x_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[0]);
     acceleration.y_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[1]);
     acceleration.z_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[2]);
-
-    /* reset latched interrupt */
-    lis2dh12_int1_src_t int1Src = {0};
-    error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
-
-    if (int1Src.xh) EDEBUG_PRINTF("acceleration > threshold on X-axis \r\n");
-    if (int1Src.yh) EDEBUG_PRINTF("acceleration > threshold on Y-axis \r\n");
-    if (int1Src.zh) EDEBUG_PRINTF("acceleration > threshold on Z-axis \r\n");
 
     return error;
 }
