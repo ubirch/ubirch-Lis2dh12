@@ -26,7 +26,11 @@ public:
 
     int32_t getAcceleration(acceleration_t &acceleration);
 
-    int16_t resetInterrupt();
+    int16_t resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun);
+
+    int16_t enableOverrunInt();
+
+    int16_t disableOverrunInt();
 
 	void readAllRegisters(void);
 
@@ -55,6 +59,7 @@ private:
     uint16_t thresholdInMg;
     uint16_t durationInMs;
 
+    int16_t resetInterrupt();
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H

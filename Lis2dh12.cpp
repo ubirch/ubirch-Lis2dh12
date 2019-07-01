@@ -132,7 +132,6 @@ int32_t Lis2dh12::init() {
      * enable high event interrupts on Int1 pin (if acc > threshold for t > duration)
      */
     lis2dh12_int1_cfg_t int1Cfg = {0};
-//    int1Cfg.aoi = 1;
     int1Cfg.xhie = 1;
     int1Cfg.yhie = 1;
     int1Cfg.zhie = 1;
@@ -271,18 +270,40 @@ int32_t Lis2dh12::checkFifoStatus() {
 int16_t Lis2dh12::resetInterrupt() {
     lis2dh12_int1_src_t int1Src = {0};
 
-    error = checkFifoStatus();
-    if (error) return error;
-
     error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
 
-    EDEBUG_PRINTF("IA: %d --- ", int1Src.ia);
-    EDEBUG_PRINTF("INT1 was caused by (acceleration > threshold) on ");
-    if (int1Src.xh) EDEBUG_PRINTF("X-axis ");
-    if (int1Src.yh) EDEBUG_PRINTF("Y-axis ");
-    if (int1Src.zh) EDEBUG_PRINTF("Z-axis ");
-    EDEBUG_PRINTF("\r\n");
+    return error;
+}
 
+/* reset latched interrupt and return cause */
+int16_t Lis2dh12::resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun) {
+    lis2dh12_int1_src_t int1Src = {0};
+
+    error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
+    if (error) return error;
+
+    *_xyzHighEvent = int1Src.ia;
+
+    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, _overrun);
+
+    return error;
+}
+
+/* activates interrupt when FIFO full and deactivates activity interrupt */
+int16_t Lis2dh12::enableOverrunInt() {
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    ctrlReg3.i1_overrun = 1;
+    ctrlReg3.i1_ia1 = 0;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    return error;
+}
+
+/* deactivates interrupt when FIFO full and activates activity interrupt */
+int16_t Lis2dh12::disableOverrunInt() {
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    ctrlReg3.i1_overrun = 0;
+    ctrlReg3.i1_ia1 = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     return error;
 }
 
