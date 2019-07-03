@@ -290,7 +290,7 @@ int16_t Lis2dh12::resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun) {
 }
 
 /* activates interrupt when FIFO full and deactivates activity interrupt */
-int16_t Lis2dh12::enableOverrunInt() {
+int16_t Lis2dh12::waitForOverrunInt() {
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
     ctrlReg3.i1_overrun = 1;
     ctrlReg3.i1_ia1 = 0;
@@ -299,7 +299,7 @@ int16_t Lis2dh12::enableOverrunInt() {
 }
 
 /* deactivates interrupt when FIFO full and activates activity interrupt */
-int16_t Lis2dh12::disableOverrunInt() {
+int16_t Lis2dh12::waitForThresholdInt() {
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
     ctrlReg3.i1_overrun = 0;
     ctrlReg3.i1_ia1 = 1;
@@ -307,17 +307,21 @@ int16_t Lis2dh12::disableOverrunInt() {
     return error;
 }
 
-int32_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
+int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
     axis3bit16_t data_raw_acceleration;
 
-    /* Read accelerometer data */
     memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
-    error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
 
-    /* following functions relate to selected full scale */
-    acceleration.x_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[0]);
-    acceleration.y_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[1]);
-    acceleration.z_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[2]);
+    for (int i = 0; i < ACC_ARRAYSIZE; i++) {
+        /* Read accelerometer data */
+        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+        if (error) return error;
+
+        /* following functions relate to selected full scale */
+        accelerationArray[i].x_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[0]);
+        accelerationArray[i].y_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[1]);
+        accelerationArray[i].z_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[2]);
+    }
 
     return error;
 }

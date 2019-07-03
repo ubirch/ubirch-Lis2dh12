@@ -24,13 +24,13 @@ public:
 
     int32_t init();
 
-    int32_t getAcceleration(acceleration_t &acceleration);
+    int32_t getAccelerationFifo(acceleration_t *accelerationArray);
 
     int16_t resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun);
 
-    int16_t enableOverrunInt();
+    int16_t waitForOverrunInt();
 
-    int16_t disableOverrunInt();
+    int16_t waitForThresholdInt();
 
 	void readAllRegisters(void);
 
