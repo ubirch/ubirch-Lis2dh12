@@ -7,7 +7,6 @@
 
 #include "mbed.h"
 #include "lis2dh12_reg.h"
-#include "DeviceConfig.h"
 
 #define ACC_ARRAYSIZE 32    //size of FIFO
 
@@ -19,7 +18,7 @@ typedef struct {
 
 class Lis2dh12 {
 public:
-    Lis2dh12(SPI *_spi, DigitalOut *_cs, DeviceConfig *_config);
+    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs);
 
     virtual ~Lis2dh12();
 
@@ -57,9 +56,10 @@ private:
     SPI *spi;
     DigitalOut *cs;
     lis2dh12_ctx_t dev_ctx;
-    DeviceConfig *config;
 
     int16_t error;
+    uint16_t thresholdInMg;
+    uint16_t durationInMs;
 
     int16_t resetInterrupt();
 };
