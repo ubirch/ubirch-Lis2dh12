@@ -3,6 +3,7 @@
 //
 
 #include <edebug.h>
+#include <DeviceConfig.h>
 #include "Lis2dh12.h"
 
 
@@ -61,11 +62,10 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
     return 0;
 }
 
-Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs) :
+Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, DeviceConfig *_config) :
         spi(_spi),
         cs(_cs),
-        thresholdInMg(_thresholdInMg),
-        durationInMs(_durationInMs)
+        config(_config)
 {
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
@@ -119,13 +119,13 @@ int32_t Lis2dh12::init() {
     /*
      * Set threshold in mg
      */
-    error = setThreshold(thresholdInMg);
+    error = setThreshold(config->thresholdInMg);
     if (error) return error;
 
     /*
      * Set duration in ms
      */
-    error = setDuration(durationInMs);
+    error = setDuration(config->durationInMs);
     if (error) return error;
 
     /*
