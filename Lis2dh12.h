@@ -37,6 +37,8 @@ public:
 
     int32_t checkFifoStatus();
 
+    bool selfTest();
+
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);

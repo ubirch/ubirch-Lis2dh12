@@ -142,7 +142,6 @@ int32_t Lis2dh12::init() {
      * generate interrupt for fifo overrun / interrupt activity on INT1
      */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-//    ctrlReg3.i1_overrun = 1;
     ctrlReg3.i1_ia1 = 1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
@@ -245,6 +244,13 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
 
     error = lis2dh12_int1_gen_duration_set(&dev_ctx, durationBits);
     return error;
+}
+
+bool Lis2dh12::selfTest() {
+    wait_ms(90);    // wait for 90ms for stable output
+
+
+
 }
 
 int32_t Lis2dh12::checkFifoStatus() {
