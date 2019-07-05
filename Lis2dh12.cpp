@@ -146,6 +146,8 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if(error) return error;
 
+    waitingForThresholdInterrupt = true;
+
     /*
      * latch interrupt request (read INT1_SRC (31h) to reset)
      */
@@ -301,6 +303,7 @@ int16_t Lis2dh12::waitForOverrunInt() {
     ctrlReg3.i1_overrun = 1;
     ctrlReg3.i1_ia1 = 0;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if (!error) waitingForThresholdInterrupt = false;
     EDEBUG_PRINTF("waiting for overrun interrupt...\r\n");
     return error;
 }
@@ -311,6 +314,7 @@ int16_t Lis2dh12::waitForThresholdInt() {
     ctrlReg3.i1_overrun = 0;
     ctrlReg3.i1_ia1 = 1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if (!error) waitingForThresholdInterrupt = true;
     EDEBUG_PRINTF("waiting for threshold interrupt...\r\n");
     return error;
 }
