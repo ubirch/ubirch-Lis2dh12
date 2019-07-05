@@ -90,13 +90,25 @@ int32_t Lis2dh12::init() {
     }else{
         EDEBUG_PRINTF("Device ID check OK. Initialize device...\r\n");
     }
-    if(error) return error;
+    if (error) return error;
+
+    readAllRegisters();
+
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
+    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
+    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
+    lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
+    lis2dh12_int1_ths_t int1Ths = {0};
+    lis2dh12_int1_duration_t int1Dur = {0};
+    lis2dh12_int1_cfg_t int1Cfg = {0};
 
     /*
      *  Enable Block Data Update
      */
     error = lis2dh12_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
-    if(error) return error;
+    if (error) return error;
 
     /*
      * Set Output Data Rate
@@ -114,44 +126,6 @@ int32_t Lis2dh12::init() {
      * Set full scale to 2g
      */
     error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
-    if(error) return error;
-
-    /*
-     * Set threshold in mg
-     */
-    error = setThreshold(thresholdInMg);
-    if (error) return error;
-
-    /*
-     * Set duration in ms
-     */
-    error = setDuration(durationInMs);
-    if (error) return error;
-
-    /*
-     * enable high event interrupts on Int1 pin (if acc > threshold for t > duration)
-     */
-    lis2dh12_int1_cfg_t int1Cfg = {0};
-    int1Cfg.xhie = 1;
-    int1Cfg.yhie = 1;
-    int1Cfg.zhie = 1;
-    error = lis2dh12_int1_gen_conf_set(&dev_ctx, &int1Cfg);
-    if (error) return error;
-
-    /*
-     * generate interrupt for fifo overrun / interrupt activity on INT1
-     */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    ctrlReg3.i1_ia1 = 1;
-    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
-    if(error) return error;
-
-    waitingForThresholdInterrupt = true;
-
-    /*
-     * latch interrupt request (read INT1_SRC (31h) to reset)
-     */
-    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
     if (error) return error;
 
     /*
@@ -170,6 +144,43 @@ int32_t Lis2dh12::init() {
      * trigger FIFO interrupt on int1 pin
      */
     error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
+    if (error) return error;
+
+    /*
+     * Set threshold in mg
+     */
+    error = setThreshold(thresholdInMg);
+    if (error) return error;
+
+    /*
+     * Set duration in ms
+     */
+    error = setDuration(durationInMs);
+    if (error) return error;
+
+    /*
+     * enable high event interrupts on Int1 pin (if acc > threshold for t > duration)
+     */
+    int1Cfg.xhie = 1;
+    int1Cfg.yhie = 1;
+    int1Cfg.zhie = 1;
+    error = lis2dh12_int1_gen_conf_set(&dev_ctx, &int1Cfg);
+    if (error) return error;
+
+    /*
+     * latch interrupt request (read INT1_SRC (31h) to reset)
+     */
+    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
+    if (error) return error;
+
+    /*
+     * generate interrupt for fifo overrun / interrupt activity on INT1
+     */
+    ctrlReg3.i1_ia1 = 1;
+    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
+    if (error) return error;
+
+    waitingForThresholdInterrupt = true;
 
 //    /*
 //     * Read (-> clear) REFERENCE register
@@ -304,7 +315,7 @@ int16_t Lis2dh12::waitForOverrunInt() {
     ctrlReg3.i1_ia1 = 0;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if (!error) waitingForThresholdInterrupt = false;
-    EDEBUG_PRINTF("waiting for overrun interrupt...\r\n");
+//    EDEBUG_PRINTF("waiting for overrun interrupt...\r\n");
     return error;
 }
 
@@ -315,7 +326,7 @@ int16_t Lis2dh12::waitForThresholdInt() {
     ctrlReg3.i1_ia1 = 1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if (!error) waitingForThresholdInterrupt = true;
-    EDEBUG_PRINTF("waiting for threshold interrupt...\r\n");
+//    EDEBUG_PRINTF("waiting for threshold interrupt...\r\n");
     return error;
 }
 
@@ -349,8 +360,8 @@ int16_t Lis2dh12::convert_to_mg_fs4(int16_t rawData) {
 void Lis2dh12::readAllRegisters(void){
 
 	uint8_t data[10];
-	for (int i = 0; i < 0x3f; ++i) {
+    for (int i = 0x1E; i <= 0x33; ++i) {
 		lis2dh12_read_reg(&dev_ctx, i, data, 1);
-		EDEBUG_PRINTF("REG: %02x = %02x\r\n", i, data[0]);
+        EDEBUG_PRINTF("REG:%02x = %02x\r\n", i, data[0]);
 	}
 }
