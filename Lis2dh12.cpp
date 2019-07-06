@@ -94,93 +94,71 @@ int32_t Lis2dh12::init() {
 
     readAllRegisters();
 
+    /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
+    ctrlReg1.odr = LIS2DH12_ODR_10Hz;       // Set Output Data Rate
+    ctrlReg1.xen = 1;                       // Enable All Axes
+    ctrlReg1.yen = 1;
+    ctrlReg1.zen = 1;
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+
+    /* High-pass filter */
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
+
+    /* Interrupt enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    ctrlReg3.i1_ia1 = 1;                    //generate interrupt for interrupt activity on INT1 and set flag
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+    waitingForThresholdInterrupt = true;
+
+    /* Block Data Update, Big/Little Endian data selection,
+     * Full-scale selection, Operating mode selection, Self-test enable,
+     * SPI serial interface mode selection */
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
+    ctrlReg4.bdu = 1;                       // Enable Block Data Update
+    ctrlReg4.fs = LIS2DH12_2g;              // Set full scale to 2g
+    ctrlReg4.hr = 0;                        // Set device in continuous mode with 10 bit resolution (normal mode)
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
+    if (error) return error;
+
+
+    /* FIFO enable and latch interrupt request */
     lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
+    ctrlReg5.fifo_en = 1;                   // Enable FIFO
+    ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
+    if (error) return error;
+
+
+    /* Interrupt 2 enable */
     lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
-    lis2dh12_int1_ths_t int1Ths = {0};
-    lis2dh12_int1_duration_t int1Dur = {0};
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
+    if (error) return error;
+
+
+    /* FIFO control register */
+    lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
+    fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
+    if (error) return error;
+
+    /* Interrupt 1 Configuration */
     lis2dh12_int1_cfg_t int1Cfg = {0};
-
-    /*
-     *  Enable Block Data Update
-     */
-    error = lis2dh12_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
+    int1Cfg.xhie = 1;                       // enable high event interrupts on Int1 pin for all axes
+    int1Cfg.yhie = 1;                       // (if acc > threshold for t > duration)
+    int1Cfg.zhie = 1;
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
 
-    /*
-     * Set Output Data Rate
-     */
-    error = lis2dh12_data_rate_set(&dev_ctx, LIS2DH12_ODR_10Hz);
-    if (error) return error;
-
-    /*
-     * Set device in continuous mode with 10 bit resolution.
-     */
-    error = lis2dh12_operating_mode_set(&dev_ctx, LIS2DH12_NM_10bit);
-    if (error) return error;
-
-    /*
-     * Set full scale to 2g
-     */
-    error = lis2dh12_full_scale_set(&dev_ctx, LIS2DH12_2g);
-    if (error) return error;
-
-    /*
-     * Enable FIFO
-     */
-    error = lis2dh12_fifo_set(&dev_ctx, 1);
-    if (error) return error;
-
-    /*
-     * select FIFO mode
-     */
-    error = lis2dh12_fifo_mode_set(&dev_ctx, LIS2DH12_DYNAMIC_STREAM_MODE);
-    if (error) return error;
-
-    /*
-     * trigger FIFO interrupt on int1 pin
-     */
-    error = lis2dh12_fifo_trigger_event_set(&dev_ctx, LIS2DH12_INT1_GEN);
-    if (error) return error;
-
-    /*
-     * Set threshold in mg
-     */
+    /* Set threshold in mg */
     error = setThreshold(thresholdInMg);
     if (error) return error;
 
-    /*
-     * Set duration in ms
-     */
+    /* Set duration in ms */
     error = setDuration(durationInMs);
     if (error) return error;
-
-    /*
-     * enable high event interrupts on Int1 pin (if acc > threshold for t > duration)
-     */
-    int1Cfg.xhie = 1;
-    int1Cfg.yhie = 1;
-    int1Cfg.zhie = 1;
-    error = lis2dh12_int1_gen_conf_set(&dev_ctx, &int1Cfg);
-    if (error) return error;
-
-    /*
-     * latch interrupt request (read INT1_SRC (31h) to reset)
-     */
-    error = lis2dh12_int1_pin_notification_mode_set(&dev_ctx, LIS2DH12_INT1_LATCHED);
-    if (error) return error;
-
-    /*
-     * generate interrupt for fifo overrun / interrupt activity on INT1
-     */
-    ctrlReg3.i1_ia1 = 1;
-    error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
-    if (error) return error;
-
-    waitingForThresholdInterrupt = true;
 
 //    /*
 //     * Read (-> clear) REFERENCE register
@@ -192,7 +170,7 @@ int32_t Lis2dh12::init() {
 }
 
 int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
-    uint8_t thresholdBits;
+    lis2dh12_int1_ths_t int1Ths = {0};
     lis2dh12_fs_t fs;
 
     error = lis2dh12_full_scale_get(&dev_ctx, &fs);
@@ -201,28 +179,29 @@ int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
     switch (fs) {
         case LIS2DH12_2g:
-            thresholdBits = (uint8_t) (userThresholdInMg >> 4);
+            int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
             break;
         case LIS2DH12_4g:
-            thresholdBits = (uint8_t) (userThresholdInMg >> 5);
+            int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
             break;
         case LIS2DH12_8g:
-            thresholdBits = (uint8_t) (userThresholdInMg / 62);
+            int1Ths.ths = (uint8_t) (userThresholdInMg / 62);
             break;
         case LIS2DH12_16g:
-            thresholdBits = (uint8_t) (userThresholdInMg / 186);
+            int1Ths.ths = (uint8_t) (userThresholdInMg / 186);
             break;
         default:
-            thresholdBits = 0;
+            int1Ths.ths = 0;
+            EDEBUG_PRINTF("Threshold could not be set.");
             break;
     }
 
-    error = lis2dh12_int1_gen_threshold_set(&dev_ctx, thresholdBits);
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_THS, (uint8_t *) &int1Ths, 1);
     return error;
 }
 
 int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
-    uint8_t durationBits;
+    lis2dh12_int1_duration_t int1Dur = {0};
     lis2dh12_odr_t odr;
 
     error = lis2dh12_data_rate_get(&dev_ctx, &odr);
@@ -230,32 +209,33 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
 
     switch (odr) {
         case LIS2DH12_ODR_1Hz:
-            durationBits = (uint8_t) (userDurationInMs / 1000);
+            int1Dur.d = (uint8_t) (userDurationInMs / 1000);
             break;
         case LIS2DH12_ODR_10Hz:
-            durationBits = (uint8_t) (userDurationInMs / 100);
+            int1Dur.d = (uint8_t) (userDurationInMs / 100);
             break;
         case LIS2DH12_ODR_25Hz:
-            durationBits = (uint8_t) (userDurationInMs / 40);
+            int1Dur.d = (uint8_t) (userDurationInMs / 40);
             break;
         case LIS2DH12_ODR_50Hz:
-            durationBits = (uint8_t) (userDurationInMs / 20);
+            int1Dur.d = (uint8_t) (userDurationInMs / 20);
             break;
         case LIS2DH12_ODR_100Hz:
-            durationBits = (uint8_t) (userDurationInMs / 10);
+            int1Dur.d = (uint8_t) (userDurationInMs / 10);
             break;
         case LIS2DH12_ODR_200Hz:
-            durationBits = (uint8_t) (userDurationInMs / 5);
+            int1Dur.d = (uint8_t) (userDurationInMs / 5);
             break;
         case LIS2DH12_ODR_400Hz:
-            durationBits = (uint8_t) ((userDurationInMs * 2) / 5);
+            int1Dur.d = (uint8_t) ((userDurationInMs * 2) / 5);
             break;
         default:
-            durationBits = 0;
+            int1Dur.d = 0;
+            EDEBUG_PRINTF("Duration could not be set.");
             break;
     }
 
-    error = lis2dh12_int1_gen_duration_set(&dev_ctx, durationBits);
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_DURATION, (uint8_t *) &int1Dur, 1);
     return error;
 }
 
