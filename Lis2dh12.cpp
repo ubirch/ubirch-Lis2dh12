@@ -83,6 +83,8 @@ int32_t Lis2dh12::init() {
      */
     uint8_t whoamI;
     error = lis2dh12_device_id_get(&dev_ctx, &whoamI);
+    if (error) return error;
+
     if (whoamI != LIS2DH12_ID)
     {
         EDEBUG_PRINTF("Device not found\r\n");
@@ -90,28 +92,16 @@ int32_t Lis2dh12::init() {
     }else{
         EDEBUG_PRINTF("Device ID check OK. Initialize device...\r\n");
     }
-    if (error) return error;
-
-    readAllRegisters();
-
-    /* ODR, LPen, Axes enable */
-    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
-    ctrlReg1.odr = LIS2DH12_ODR_10Hz;       // Set Output Data Rate
-    ctrlReg1.xen = 1;                       // Enable All Axes
-    ctrlReg1.yen = 1;
-    ctrlReg1.zen = 1;
-    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
 
     /* High-pass filter */
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
+    if (error) return error;
 
-    /* Interrupt enable */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    ctrlReg3.i1_ia1 = 1;                    //generate interrupt for interrupt activity on INT1 and set flag
+    /* Interrupt 1 enable */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};    // do not enable any interrupts yet
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
-    waitingForThresholdInterrupt = true;
 
     /* Block Data Update, Big/Little Endian data selection,
      * Full-scale selection, Operating mode selection, Self-test enable,
@@ -123,7 +113,6 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     if (error) return error;
 
-
     /* FIFO enable and latch interrupt request */
     lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
     ctrlReg5.fifo_en = 1;                   // Enable FIFO
@@ -131,17 +120,50 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
     if (error) return error;
 
-
     /* Interrupt 2 enable */
     lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
     if (error) return error;
 
-
     /* FIFO control register */
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
+    if (error) return error;
+
+    /* ODR, LPen, Axes enable */
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
+    ctrlReg1.odr = LIS2DH12_ODR_10Hz;       // Set Output Data Rate
+    ctrlReg1.xen = 1;                       // Enable All Axes
+    ctrlReg1.yen = 1;
+    ctrlReg1.zen = 1;
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1,
+                               1); // writing to CTRL_REG1 turns sensor on
+    if (error) return error;
+
+    error = selfTest();
+    if (error) return error;
+
+    error = enableThsInterrupt();
+    if (error) return error;
+
+//    /*
+//     * Read (-> clear) REFERENCE register
+//     */
+//    uint8_t buff;
+//    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
+
+    return error;
+}
+
+int32_t Lis2dh12::enableThsInterrupt() {
+
+    /* Set threshold in mg */
+    error = setThreshold(thresholdInMg);
+    if (error) return error;
+
+    /* Set duration in ms */
+    error = setDuration(durationInMs);
     if (error) return error;
 
     /* Interrupt 1 Configuration */
@@ -152,19 +174,12 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
 
-    /* Set threshold in mg */
-    error = setThreshold(thresholdInMg);
+    /* Interrupt 1 enable */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    ctrlReg3.i1_ia1 = 1;                    //generate interrupt for interrupt activity on INT1 and set flag
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
-
-    /* Set duration in ms */
-    error = setDuration(durationInMs);
-    if (error) return error;
-
-//    /*
-//     * Read (-> clear) REFERENCE register
-//     */
-//    uint8_t buff;
-//    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
+    waitingForThresholdInterrupt = true;
 
     return error;
 }
@@ -191,9 +206,8 @@ int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
             int1Ths.ths = (uint8_t) (userThresholdInMg / 186);
             break;
         default:
-            int1Ths.ths = 0;
             EDEBUG_PRINTF("Threshold could not be set.");
-            break;
+            return error;
     }
 
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_THS, (uint8_t *) &int1Ths, 1);
@@ -230,17 +244,16 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
             int1Dur.d = (uint8_t) ((userDurationInMs * 2) / 5);
             break;
         default:
-            int1Dur.d = 0;
             EDEBUG_PRINTF("Duration could not be set.");
-            break;
+            return error;
     }
 
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_DURATION, (uint8_t *) &int1Dur, 1);
     return error;
 }
 
-bool Lis2dh12::selfTest() {
-    wait_ms(90);    // wait for 90ms for stable output
+int32_t Lis2dh12::selfTest() {
+//    wait_ms(90);    // wait for 90ms for stable output
 
 
 

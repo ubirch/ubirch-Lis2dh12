@@ -36,7 +36,7 @@ public:
 
     int32_t checkFifoStatus();
 
-    bool selfTest();
+    int32_t selfTest();
 
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
@@ -55,6 +55,10 @@ private:
 
     int16_t convert_to_mg_fs8(int16_t rawData);
 
+    int32_t enableThsInterrupt();
+
+    int16_t resetInterrupt();
+
     uint8_t tx_buffer[1000];
 
     SPI *spi;
@@ -64,8 +68,6 @@ private:
     int16_t error;
     uint16_t thresholdInMg;
     uint16_t durationInMs;
-
-    int16_t resetInterrupt();
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
