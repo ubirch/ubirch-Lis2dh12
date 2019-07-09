@@ -118,7 +118,7 @@ int32_t Lis2dh12::init() {
      * SPI serial interface mode selection */
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
     ctrlReg4.bdu = 1;                       // Enable Block Data Update
-    ctrlReg4.fs = LIS2DH12_2g;              // Set full scale to 2g
+    ctrlReg4.fs = LIS2DH12_8g;              // Set full scale to 8g
     ctrlReg4.hr = 0;                        // Set device in continuous mode with 10 bit resolution (normal mode)
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     if (error) return error;
@@ -321,9 +321,9 @@ int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
         if (error) return error;
 
         /* following functions relate to selected full scale */
-        accelerationArray[i].x_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[0]);
-        accelerationArray[i].y_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[1]);
-        accelerationArray[i].z_axis = convert_to_mg_fs2(data_raw_acceleration.i16bit[2]);
+        accelerationArray[i].x_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[0]);
+        accelerationArray[i].y_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[1]);
+        accelerationArray[i].z_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[2]);
     }
 
     return error;
@@ -335,6 +335,10 @@ int16_t Lis2dh12::convert_to_mg_fs2(int16_t rawData) {
 
 int16_t Lis2dh12::convert_to_mg_fs4(int16_t rawData) {
     return (rawData >> 3);
+}
+
+int16_t Lis2dh12::convert_to_mg_fs8(int16_t rawData) {
+    return (rawData >> 2);
 }
 
 void Lis2dh12::readAllRegisters(void){

@@ -53,6 +53,8 @@ private:
 
     int16_t convert_to_mg_fs4(int16_t rawData);
 
+    int16_t convert_to_mg_fs8(int16_t rawData);
+
     uint8_t tx_buffer[1000];
 
     SPI *spi;
