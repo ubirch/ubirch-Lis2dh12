@@ -61,11 +61,13 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
     return 0;
 }
 
-Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs) :
+Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs,
+                   lis2dh12_odr_t _samplRate) :
         spi(_spi),
         cs(_cs),
         thresholdInMg(_thresholdInMg),
-        durationInMs(_durationInMs)
+        durationInMs(_durationInMs),
+        samplRate(_samplRate)
 {
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
@@ -133,7 +135,7 @@ int32_t Lis2dh12::init() {
 
     /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
-    ctrlReg1.odr = LIS2DH12_ODR_10Hz;       // Set Output Data Rate
+    ctrlReg1.odr = samplRate;               // Set Sampling Rate
     ctrlReg1.xen = 1;                       // Enable All Axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
@@ -195,18 +197,22 @@ int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     switch (fs) {
         case LIS2DH12_2g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
+            EDEBUG_PRINTF("Full Scale: 2g\r\n");
             break;
         case LIS2DH12_4g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
+            EDEBUG_PRINTF("Full Scale: 4g\r\n");
             break;
         case LIS2DH12_8g:
             int1Ths.ths = (uint8_t) (userThresholdInMg / 62);
+            EDEBUG_PRINTF("Full Scale: 8g\r\n");
             break;
         case LIS2DH12_16g:
             int1Ths.ths = (uint8_t) (userThresholdInMg / 186);
+            EDEBUG_PRINTF("Full Scale: 16g\r\n");
             break;
         default:
-            EDEBUG_PRINTF("Threshold could not be set.");
+            EDEBUG_PRINTF("Threshold could not be set.\r\n\r\n");
             return error;
     }
 
@@ -224,27 +230,34 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     switch (odr) {
         case LIS2DH12_ODR_1Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 1000);
+            EDEBUG_PRINTF("Sampling Rate: 1Hz\r\n");
             break;
         case LIS2DH12_ODR_10Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 100);
+            EDEBUG_PRINTF("Sampling Rate: 10Hz\r\n");
             break;
         case LIS2DH12_ODR_25Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 40);
+            EDEBUG_PRINTF("Sampling Rate: 25Hz\r\n");
             break;
         case LIS2DH12_ODR_50Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 20);
+            EDEBUG_PRINTF("Sampling Rate: 50Hz\r\n");
             break;
         case LIS2DH12_ODR_100Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 10);
+            EDEBUG_PRINTF("Sampling Rate: 100Hz\r\n");
             break;
         case LIS2DH12_ODR_200Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 5);
+            EDEBUG_PRINTF("Sampling Rate: 200Hz\r\n");
             break;
         case LIS2DH12_ODR_400Hz:
             int1Dur.d = (uint8_t) ((userDurationInMs * 2) / 5);
+            EDEBUG_PRINTF("Sampling Rate: 400Hz\r\n");
             break;
         default:
-            EDEBUG_PRINTF("Duration could not be set.");
+            EDEBUG_PRINTF("Duration could not be set.\r\n\r\n");
             return error;
     }
 
@@ -256,8 +269,7 @@ int32_t Lis2dh12::selfTest() {
     uint8_t dataReady = 0;
     uint8_t dataLevel = 0;
     axis3bit16_t data_raw_acceleration;
-    uint8_t testArraySize = 5;
-    acceleration_t selfTestArray[testArraySize];
+    acceleration_t selfTestArray[TEST_ARRAYSIZE];
     int32_t x_sum = 0;
     int32_t y_sum = 0;
     int32_t z_sum = 0;
@@ -291,10 +303,10 @@ int32_t Lis2dh12::selfTest() {
         error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
         if (error) return error;
         EDEBUG_PRINTF("%d unread values in FIFO\r\n", dataLevel);
-    } while (dataLevel < testArraySize);
+    } while (dataLevel < TEST_ARRAYSIZE);
 
     /* read new values and save average of each axis */
-    for (int i = 0; i < testArraySize; i++) {
+    for (int i = 0; i < TEST_ARRAYSIZE; i++) {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
         if (error) return error;
 
@@ -308,9 +320,9 @@ int32_t Lis2dh12::selfTest() {
     }
 
     /* average values */
-    firstAverage.x_axis = x_sum / testArraySize;
-    firstAverage.y_axis = y_sum / testArraySize;
-    firstAverage.z_axis = z_sum / testArraySize;
+    firstAverage.x_axis = x_sum / TEST_ARRAYSIZE;
+    firstAverage.y_axis = y_sum / TEST_ARRAYSIZE;
+    firstAverage.z_axis = z_sum / TEST_ARRAYSIZE;
 
     x_sum = 0;
     y_sum = 0;
@@ -343,10 +355,10 @@ int32_t Lis2dh12::selfTest() {
         error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
         if (error) return error;
         EDEBUG_PRINTF("%d unread values in FIFO\r\n", dataLevel);
-    } while (dataLevel < testArraySize);
+    } while (dataLevel < TEST_ARRAYSIZE);
 
     /* read new values */
-    for (int i = 0; i < testArraySize; i++) {
+    for (int i = 0; i < TEST_ARRAYSIZE; i++) {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
         if (error) return error;
 
@@ -397,9 +409,9 @@ int32_t Lis2dh12::selfTest() {
     }
 
     /* average values */
-    selfTestAverage.x_axis = x_sum / testArraySize;
-    selfTestAverage.y_axis = y_sum / testArraySize;
-    selfTestAverage.z_axis = z_sum / testArraySize;
+    selfTestAverage.x_axis = x_sum / TEST_ARRAYSIZE;
+    selfTestAverage.y_axis = y_sum / TEST_ARRAYSIZE;
+    selfTestAverage.z_axis = z_sum / TEST_ARRAYSIZE;
 
     /* disable selftest */
     error = lis2dh12_self_test_set(&dev_ctx, LIS2DH12_ST_DISABLE);

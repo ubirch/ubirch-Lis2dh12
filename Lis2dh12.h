@@ -8,7 +8,8 @@
 #include "mbed.h"
 #include "lis2dh12_reg.h"
 
-#define ACC_ARRAYSIZE 32    //size of FIFO
+#define ACC_ARRAYSIZE 32    // size of accelerometer FIFO
+#define TEST_ARRAYSIZE 5    // array for sensor self test
 
 typedef struct {
     int16_t x_axis;
@@ -18,7 +19,7 @@ typedef struct {
 
 class Lis2dh12 {
 public:
-    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs);
+    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate);
 
     virtual ~Lis2dh12();
 
@@ -68,6 +69,7 @@ private:
     int16_t error;
     uint16_t thresholdInMg;
     uint16_t durationInMs;
+    lis2dh12_odr_t samplRate;
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
