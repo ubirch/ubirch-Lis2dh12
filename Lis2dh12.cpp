@@ -69,7 +69,8 @@ Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t
         thresholdInMg(_thresholdInMg),
         durationInMs(_durationInMs),
         samplRate(_samplRate),
-        fullScale(_fullScale)
+        fullScale(_fullScale),
+        waitingForThresholdInterrupt(false)
 {
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;

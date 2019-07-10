@@ -44,7 +44,7 @@ public:
 
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
-    bool waitingForThresholdInterrupt = false;
+    bool waitingForThresholdInterrupt;
 
 private:
     int32_t setDuration(uint16_t userDurationInMs);
