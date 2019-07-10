@@ -273,7 +273,7 @@ int32_t Lis2dh12::selfTest() {
         wait_ms(100);
         error = lis2dh12_xl_data_ready_get(&dev_ctx, &dataReady);
         if (error) return error;
-    } while (dataReady = 0);
+    } while (dataReady == 0);
 
     /* read first available data and discard */
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
@@ -322,10 +322,10 @@ int32_t Lis2dh12::selfTest() {
 
     /* wait for available data */
     do {
-        wait_ms(100);
+        wait_ms(90);
         error = lis2dh12_xl_data_ready_get(&dev_ctx, &dataReady);
         if (error) return error;
-    } while (dataReady = 0);
+    } while (dataReady == 0);
 
     /* read first available data and discard */
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
@@ -358,7 +358,6 @@ int32_t Lis2dh12::selfTest() {
         y_sum += selfTestArray[i].y_axis;
         z_sum += selfTestArray[i].z_axis;
 
-        /* find MIN */
         if (i == 0) {
             selfTestAbsMin.x_axis = abs(selfTestArray[i].x_axis);
             selfTestAbsMin.y_axis = abs(selfTestArray[i].y_axis);
@@ -367,31 +366,33 @@ int32_t Lis2dh12::selfTest() {
             selfTestAbsMax.x_axis = abs(selfTestArray[i].x_axis);
             selfTestAbsMax.y_axis = abs(selfTestArray[i].y_axis);
             selfTestAbsMax.z_axis = abs(selfTestArray[i].z_axis);
-        }
+        } else {
 
-        if (selfTestAbsMin.x_axis > abs(selfTestArray[i].x_axis)) {
-            selfTestAbsMin.x_axis = abs(selfTestArray[i].x_axis);
-        }
+            /* find MIN */
+            if (selfTestAbsMin.x_axis > abs(selfTestArray[i].x_axis)) {
+                selfTestAbsMin.x_axis = abs(selfTestArray[i].x_axis);
+            }
 
-        if (selfTestAbsMin.y_axis > abs(selfTestArray[i].y_axis)) {
-            selfTestAbsMin.y_axis = abs(selfTestArray[i].y_axis);
-        }
+            if (selfTestAbsMin.y_axis > abs(selfTestArray[i].y_axis)) {
+                selfTestAbsMin.y_axis = abs(selfTestArray[i].y_axis);
+            }
 
-        if (selfTestAbsMin.z_axis > abs(selfTestArray[i].z_axis)) {
-            selfTestAbsMin.z_axis = abs(selfTestArray[i].z_axis);
-        }
+            if (selfTestAbsMin.z_axis > abs(selfTestArray[i].z_axis)) {
+                selfTestAbsMin.z_axis = abs(selfTestArray[i].z_axis);
+            }
 
-        /* find MAX */
-        if (selfTestAbsMax.x_axis < abs(selfTestArray[i].x_axis)) {
-            selfTestAbsMax.x_axis = abs(selfTestArray[i].x_axis);
-        }
+            /* find MAX */
+            if (selfTestAbsMax.x_axis < abs(selfTestArray[i].x_axis)) {
+                selfTestAbsMax.x_axis = abs(selfTestArray[i].x_axis);
+            }
 
-        if (selfTestAbsMax.y_axis < abs(selfTestArray[i].y_axis)) {
-            selfTestAbsMax.y_axis = abs(selfTestArray[i].y_axis);
-        }
+            if (selfTestAbsMax.y_axis < abs(selfTestArray[i].y_axis)) {
+                selfTestAbsMax.y_axis = abs(selfTestArray[i].y_axis);
+            }
 
-        if (selfTestAbsMax.z_axis < abs(selfTestArray[i].z_axis)) {
-            selfTestAbsMax.z_axis = abs(selfTestArray[i].z_axis);
+            if (selfTestAbsMax.z_axis < abs(selfTestArray[i].z_axis)) {
+                selfTestAbsMax.z_axis = abs(selfTestArray[i].z_axis);
+            }
         }
     }
 
@@ -409,6 +410,11 @@ int32_t Lis2dh12::selfTest() {
     absDif.x_axis = abs(selfTestAverage.x_axis - firstAverage.x_axis);
     absDif.y_axis = abs(selfTestAverage.y_axis - firstAverage.y_axis);
     absDif.z_axis = abs(selfTestAverage.z_axis - firstAverage.z_axis);
+
+    EDEBUG_PRINTF("selfTestAverage.x_axis (%d) - firstAverage.x_axis (%d) \r\n", selfTestAverage.x_axis,
+                  firstAverage.x_axis);
+    EDEBUG_PRINTF("Check: STx-min %d < %d < STx-max %d \r\n", selfTestAbsMin.x_axis, absDif.x_axis,
+                  selfTestAbsMax.x_axis);
 
     /* finally, check if passed */
     if ((selfTestAbsMin.x_axis <= absDif.x_axis) && (absDif.x_axis <= selfTestAbsMax.x_axis)
