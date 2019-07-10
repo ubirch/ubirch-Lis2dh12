@@ -19,7 +19,8 @@ typedef struct {
 
 class Lis2dh12 {
 public:
-    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate);
+    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
+             lis2dh12_fs_t _fullScale);
 
     virtual ~Lis2dh12();
 
@@ -70,6 +71,7 @@ private:
     uint16_t thresholdInMg;
     uint16_t durationInMs;
     lis2dh12_odr_t samplRate;
+    lis2dh12_fs_t fullScale;
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H

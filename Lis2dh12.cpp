@@ -62,12 +62,14 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
 }
 
 Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs,
-                   lis2dh12_odr_t _samplRate) :
+                   lis2dh12_odr_t _samplRate,
+                   lis2dh12_fs_t _fullScale) :
         spi(_spi),
         cs(_cs),
         thresholdInMg(_thresholdInMg),
         durationInMs(_durationInMs),
-        samplRate(_samplRate)
+        samplRate(_samplRate),
+        fullScale(_fullScale)
 {
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
@@ -110,7 +112,7 @@ int32_t Lis2dh12::init() {
      * SPI serial interface mode selection */
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
     ctrlReg4.bdu = 1;                       // Enable Block Data Update
-    ctrlReg4.fs = LIS2DH12_8g;              // Set full scale to 8g
+    ctrlReg4.fs = fullScale;                // Set full scale
     ctrlReg4.hr = 0;                        // Set device in continuous mode with 10 bit resolution (normal mode)
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     if (error) return error;
