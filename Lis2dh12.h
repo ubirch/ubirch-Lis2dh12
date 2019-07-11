@@ -71,11 +71,7 @@ private:
 
     int32_t setThreshold(uint16_t userThresholdInMg);
 
-    int16_t convert_to_mg_fs2(int16_t rawData);
-
-    int16_t convert_to_mg_fs4(int16_t rawData);
-
-    int16_t convert_to_mg_fs8(int16_t rawData);
+    int16_t convert_to_mg(int16_t rawData);
 
     int32_t enableThsInterrupt();
 
@@ -92,6 +88,7 @@ private:
     uint16_t durationInMs;
     lis2dh12_odr_t samplRate;
     lis2dh12_fs_t fullScale;
+
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H

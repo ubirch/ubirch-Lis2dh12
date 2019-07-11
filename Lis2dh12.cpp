@@ -119,12 +119,12 @@ int32_t Lis2dh12::init() {
     }
 
     /* High-pass filter */
-    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
     if (error) return error;
 
     /* Interrupt 1 enable */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};    // do not enable any interrupts yet
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};    // do not enable any interrupts on interrupt 1 pin yet
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
 
@@ -146,7 +146,7 @@ int32_t Lis2dh12::init() {
     if (error) return error;
 
     /* Interrupt 2 enable */
-    lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
+    lis2dh12_ctrl_reg6_t ctrlReg6 = {0};    // do not enable any interrupt on interrupt 2 pin
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
     if (error) return error;
 
@@ -201,7 +201,7 @@ int32_t Lis2dh12::enableThsInterrupt() {
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    ctrlReg3.i1_ia1 = 1;                    //generate interrupt for interrupt activity on INT1 and set flag
+    ctrlReg3.i1_ia1 = 1;                    // generate interrupt for interrupt activity on INT1 and set flag
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
     waitingForThresholdInterrupt = true;
@@ -289,29 +289,28 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
 }
 
 int32_t Lis2dh12::selfTest() {
-    uint8_t dataReady = 0;
     uint8_t dataLevel = 0;
     axis3bit16_t data_raw_acceleration;
+    memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
+
     acceleration_t selfTestArray[TEST_ARRAYSIZE];
     int32_t x_sum = 0;
     int32_t y_sum = 0;
     int32_t z_sum = 0;
     acceleration_t firstAverage = {0};
     acceleration_t selfTestAverage = {0};
+    acceleration_t absDif = {0};
 
-    memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
+    /* min and max values provided by sensor manufacturer (lis2dh12 datasheet) */
+    int16_t minST = 17 << fullScale;
+    int16_t maxST = 360 << fullScale;
 
-    /* wait for available data */
-    do {
-        wait_ms(90);
-        error = lis2dh12_xl_data_ready_get(&dev_ctx, &dataReady);
-        if (error) return error;
-    } while (!dataReady);
+    /* wait for stable output */
+    wait_ms(100);
 
     /* read first available data and discard */
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
     if (error) return error;
-    EDEBUG_PRINTF("%d unread values in FIFO -> discard\r\n", dataLevel);
 
     for (int i = 0; i < dataLevel; i++) {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
@@ -320,10 +319,9 @@ int32_t Lis2dh12::selfTest() {
 
     /* wait until new measurements in fifo */
     do {
-        wait_ms(40);
+        wait_ms(100);
         error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
         if (error) return error;
-        EDEBUG_PRINTF("%d unread values in FIFO\r\n", dataLevel);
     } while (dataLevel < TEST_ARRAYSIZE);
 
     /* read new values and save average of each axis */
@@ -331,9 +329,9 @@ int32_t Lis2dh12::selfTest() {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
         if (error) return error;
 
-        selfTestArray[i].x_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[0]);
-        selfTestArray[i].y_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[1]);
-        selfTestArray[i].z_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[2]);
+        selfTestArray[i].x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
+        selfTestArray[i].y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
+        selfTestArray[i].z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
 
         x_sum += selfTestArray[i].x_axis;
         y_sum += selfTestArray[i].y_axis;
@@ -354,17 +352,12 @@ int32_t Lis2dh12::selfTest() {
     error = lis2dh12_self_test_set(&dev_ctx, LIS2DH12_ST_POSITIVE);
     if (error) return error;
 
-    /* wait for available data */
-    do {
-        wait_ms(90);
-        error = lis2dh12_xl_data_ready_get(&dev_ctx, &dataReady);
-        if (error) return error;
-    } while (!dataReady);
+    /* wait for stable output */
+    wait_ms(100);
 
     /* read first available data and discard */
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
     if (error) return error;
-    EDEBUG_PRINTF("%d unread values in FIFO -> discard\r\n", dataLevel);
 
     for (int i = 0; i < dataLevel; i++) {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
@@ -373,20 +366,19 @@ int32_t Lis2dh12::selfTest() {
 
     /* wait until new measurements in fifo */
     do {
-        wait_ms(40);
+        wait_ms(100);
         error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
         if (error) return error;
-        EDEBUG_PRINTF("%d unread values in FIFO\r\n", dataLevel);
     } while (dataLevel < TEST_ARRAYSIZE);
 
-    /* read new values */
+    /* read new values and save average of each axis */
     for (int i = 0; i < TEST_ARRAYSIZE; i++) {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
         if (error) return error;
 
-        selfTestArray[i].x_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[0]);
-        selfTestArray[i].y_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[1]);
-        selfTestArray[i].z_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[2]);
+        selfTestArray[i].x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
+        selfTestArray[i].y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
+        selfTestArray[i].z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
 
         x_sum += selfTestArray[i].x_axis;
         y_sum += selfTestArray[i].y_axis;
@@ -402,42 +394,19 @@ int32_t Lis2dh12::selfTest() {
     error = lis2dh12_self_test_set(&dev_ctx, LIS2DH12_ST_DISABLE);
     if (error) return error;
 
-    acceleration_t absDif = {0};
-
+    /* calculate absolute difference of both averages */
     absDif.x_axis = abs(selfTestAverage.x_axis - firstAverage.x_axis);
     absDif.y_axis = abs(selfTestAverage.y_axis - firstAverage.y_axis);
     absDif.z_axis = abs(selfTestAverage.z_axis - firstAverage.z_axis);
 
-    int16_t min = 17 << fullScale;
-    int16_t minSTX = min;
-    int16_t minSTY = min;
-    int16_t minSTZ = min;
-
-    int16_t max = 360 << fullScale;
-    int16_t maxSTX = max;
-    int16_t maxSTY = max;
-    int16_t maxSTZ = max;
-
-    EDEBUG_PRINTF("ST avg  x: %04d | y: %04d | z: %04d\r\n", selfTestAverage.x_axis, selfTestAverage.y_axis,
-                  selfTestAverage.z_axis);
-    EDEBUG_PRINTF("reg avg x: %04d | y: %04d | z: %04d\r\n", firstAverage.x_axis, firstAverage.y_axis,
-                  firstAverage.z_axis);
-    EDEBUG_PRINTF("dif     x: %04d | y: %04d | z: %04d\r\n\r\n", absDif.x_axis, absDif.y_axis, absDif.z_axis);
-
-    EDEBUG_PRINTF("Check1: %d < %d < %d \r\n\r\n", minSTX, absDif.x_axis, maxSTX);
-
-    EDEBUG_PRINTF("Check2: %d < %d < %d \r\n\r\n", minSTY, absDif.y_axis, maxSTY);
-
-    EDEBUG_PRINTF("Check3: %d < %d < %d \r\n\r\n", minSTZ, absDif.z_axis, maxSTZ);
-
-    /* finally, check if passed */
-    if ((minSTX <= absDif.x_axis) && (absDif.x_axis <= maxSTX)
-        && (minSTY <= absDif.y_axis) && (absDif.y_axis <= maxSTY)
-        && (minSTZ <= absDif.z_axis) && (absDif.z_axis <= maxSTZ)) {
-        EDEBUG_PRINTF("SELF TEST PASSED\r\n\r\n");
+    /* check if difference is in acceptable range */
+    if ((minST <= absDif.x_axis) && (absDif.x_axis <= maxST)
+        && (minST <= absDif.y_axis) && (absDif.y_axis <= maxST)
+        && (minST <= absDif.z_axis) && (absDif.z_axis <= maxST)) {
+        EDEBUG_PRINTF("SELF TEST PASSED\r\n");
         return 0;
     } else {
-        EDEBUG_PRINTF("SELF TEST FAILED\r\n\r\n");
+        EDEBUG_PRINTF(" - - - SELF TEST FAILED - - - \r\n\r\n");
         return 0xffff;
     }
 }
@@ -516,25 +485,28 @@ int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
         error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
         if (error) return error;
 
-        /* following functions relate to selected full scale */
-        accelerationArray[i].x_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[0]);
-        accelerationArray[i].y_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[1]);
-        accelerationArray[i].z_axis = convert_to_mg_fs8(data_raw_acceleration.i16bit[2]);
+        accelerationArray[i].x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
+        accelerationArray[i].y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
+        accelerationArray[i].z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
     }
 
     return error;
 }
 
-int16_t Lis2dh12::convert_to_mg_fs2(int16_t rawData) {
-    return (rawData >> 4);  //TODO check if safe to shift signed int
-}
+int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
 
-int16_t Lis2dh12::convert_to_mg_fs4(int16_t rawData) {
-    return (rawData >> 3);
-}
-
-int16_t Lis2dh12::convert_to_mg_fs8(int16_t rawData) {
-    return (rawData >> 2);
+    switch (fullScale) {
+        case LIS2DH12_2g:
+            return (rawData >> 4);
+        case LIS2DH12_4g:
+            return (rawData >> 3);
+        case LIS2DH12_8g:
+            return (rawData >> 2);
+        case LIS2DH12_16g:
+            return ((rawData * 3) >> 2);
+        default:
+            return 0xffff;
+    }
 }
 
 void Lis2dh12::readAllRegisters(void){
