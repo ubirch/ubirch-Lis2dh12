@@ -169,8 +169,6 @@ int32_t Lis2dh12::init() {
     error = selfTest();
     if (error) return error;
 
-    readAllRegisters();
-
 //    /* restart sensor */
 //    lis2dh12_ctrl_reg1_t ctrlReg_allOff = {0};
 //    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg_allOff, 1);
@@ -185,6 +183,10 @@ int32_t Lis2dh12::init() {
 }
 
 int32_t Lis2dh12::enableThsInterrupt() {
+
+    /* clear interrupt */
+    uint8_t data;
+    lis2dh12_read_reg(&dev_ctx, 0x31, &data, 1);
 
     /* Set threshold in mg */
     error = setThreshold(thresholdInMg);
