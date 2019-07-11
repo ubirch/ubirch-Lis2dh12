@@ -166,8 +166,8 @@ int32_t Lis2dh12::init() {
                                1); // writing to CTRL_REG1 turns sensor on
     if (error) return error;
 
-//    error = selfTest();
-//    if (error) return error;
+    error = selfTest();
+    if (error) return error;
 
     error = enableThsInterrupt();
     if (error) return error;
@@ -298,17 +298,15 @@ int32_t Lis2dh12::selfTest() {
     int32_t z_sum = 0;
     acceleration_t firstAverage = {0};
     acceleration_t selfTestAverage = {0};
-    acceleration_t selfTestAbsMin = {0};
-    acceleration_t selfTestAbsMax = {0};
 
     memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
 
     /* wait for available data */
     do {
-        wait_ms(100);
+        wait_ms(90);
         error = lis2dh12_xl_data_ready_get(&dev_ctx, &dataReady);
         if (error) return error;
-    } while (dataReady == 0);
+    } while (!dataReady);
 
     /* read first available data and discard */
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
@@ -322,7 +320,7 @@ int32_t Lis2dh12::selfTest() {
 
     /* wait until new measurements in fifo */
     do {
-        wait_ms(100);
+        wait_ms(40);
         error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
         if (error) return error;
         EDEBUG_PRINTF("%d unread values in FIFO\r\n", dataLevel);
@@ -347,6 +345,7 @@ int32_t Lis2dh12::selfTest() {
     firstAverage.y_axis = y_sum / TEST_ARRAYSIZE;
     firstAverage.z_axis = z_sum / TEST_ARRAYSIZE;
 
+    /* reset variables for next average */
     x_sum = 0;
     y_sum = 0;
     z_sum = 0;
@@ -360,7 +359,7 @@ int32_t Lis2dh12::selfTest() {
         wait_ms(90);
         error = lis2dh12_xl_data_ready_get(&dev_ctx, &dataReady);
         if (error) return error;
-    } while (dataReady == 0);
+    } while (!dataReady);
 
     /* read first available data and discard */
     error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
@@ -374,7 +373,7 @@ int32_t Lis2dh12::selfTest() {
 
     /* wait until new measurements in fifo */
     do {
-        wait_ms(100);
+        wait_ms(40);
         error = lis2dh12_fifo_data_level_get(&dev_ctx, &dataLevel);
         if (error) return error;
         EDEBUG_PRINTF("%d unread values in FIFO\r\n", dataLevel);
@@ -392,43 +391,6 @@ int32_t Lis2dh12::selfTest() {
         x_sum += selfTestArray[i].x_axis;
         y_sum += selfTestArray[i].y_axis;
         z_sum += selfTestArray[i].z_axis;
-
-        if (i == 0) {
-            selfTestAbsMin.x_axis = abs(selfTestArray[i].x_axis);
-            selfTestAbsMin.y_axis = abs(selfTestArray[i].y_axis);
-            selfTestAbsMin.z_axis = abs(selfTestArray[i].z_axis);
-
-            selfTestAbsMax.x_axis = abs(selfTestArray[i].x_axis);
-            selfTestAbsMax.y_axis = abs(selfTestArray[i].y_axis);
-            selfTestAbsMax.z_axis = abs(selfTestArray[i].z_axis);
-        } else {
-
-            /* find MIN */
-            if (selfTestAbsMin.x_axis > abs(selfTestArray[i].x_axis)) {
-                selfTestAbsMin.x_axis = abs(selfTestArray[i].x_axis);
-            }
-
-            if (selfTestAbsMin.y_axis > abs(selfTestArray[i].y_axis)) {
-                selfTestAbsMin.y_axis = abs(selfTestArray[i].y_axis);
-            }
-
-            if (selfTestAbsMin.z_axis > abs(selfTestArray[i].z_axis)) {
-                selfTestAbsMin.z_axis = abs(selfTestArray[i].z_axis);
-            }
-
-            /* find MAX */
-            if (selfTestAbsMax.x_axis < abs(selfTestArray[i].x_axis)) {
-                selfTestAbsMax.x_axis = abs(selfTestArray[i].x_axis);
-            }
-
-            if (selfTestAbsMax.y_axis < abs(selfTestArray[i].y_axis)) {
-                selfTestAbsMax.y_axis = abs(selfTestArray[i].y_axis);
-            }
-
-            if (selfTestAbsMax.z_axis < abs(selfTestArray[i].z_axis)) {
-                selfTestAbsMax.z_axis = abs(selfTestArray[i].z_axis);
-            }
-        }
     }
 
     /* average values */
@@ -446,15 +408,32 @@ int32_t Lis2dh12::selfTest() {
     absDif.y_axis = abs(selfTestAverage.y_axis - firstAverage.y_axis);
     absDif.z_axis = abs(selfTestAverage.z_axis - firstAverage.z_axis);
 
-    EDEBUG_PRINTF("selfTestAverage.x_axis (%d) - firstAverage.x_axis (%d) \r\n", selfTestAverage.x_axis,
-                  firstAverage.x_axis);
-    EDEBUG_PRINTF("Check: STx-min %d < %d < STx-max %d \r\n", selfTestAbsMin.x_axis, absDif.x_axis,
-                  selfTestAbsMax.x_axis);
+    int16_t min = 17 << fullScale;
+    int16_t minSTX = min;
+    int16_t minSTY = min;
+    int16_t minSTZ = min;
+
+    int16_t max = 360 << fullScale;
+    int16_t maxSTX = max;
+    int16_t maxSTY = max;
+    int16_t maxSTZ = max;
+
+    EDEBUG_PRINTF("ST avg  x: %04d | y: %04d | z: %04d\r\n", selfTestAverage.x_axis, selfTestAverage.y_axis,
+                  selfTestAverage.z_axis);
+    EDEBUG_PRINTF("reg avg x: %04d | y: %04d | z: %04d\r\n", firstAverage.x_axis, firstAverage.y_axis,
+                  firstAverage.z_axis);
+    EDEBUG_PRINTF("dif     x: %04d | y: %04d | z: %04d\r\n\r\n", absDif.x_axis, absDif.y_axis, absDif.z_axis);
+
+    EDEBUG_PRINTF("Check1: %d < %d < %d \r\n\r\n", minSTX, absDif.x_axis, maxSTX);
+
+    EDEBUG_PRINTF("Check2: %d < %d < %d \r\n\r\n", minSTY, absDif.y_axis, maxSTY);
+
+    EDEBUG_PRINTF("Check3: %d < %d < %d \r\n\r\n", minSTZ, absDif.z_axis, maxSTZ);
 
     /* finally, check if passed */
-    if ((selfTestAbsMin.x_axis <= absDif.x_axis) && (absDif.x_axis <= selfTestAbsMax.x_axis)
-        && (selfTestAbsMin.y_axis <= absDif.y_axis) && (absDif.y_axis <= selfTestAbsMax.y_axis)
-        && (selfTestAbsMin.z_axis <= absDif.z_axis) && (absDif.z_axis <= selfTestAbsMax.z_axis)) {
+    if ((minSTX <= absDif.x_axis) && (absDif.x_axis <= maxSTX)
+        && (minSTY <= absDif.y_axis) && (absDif.y_axis <= maxSTY)
+        && (minSTZ <= absDif.z_axis) && (absDif.z_axis <= maxSTZ)) {
         EDEBUG_PRINTF("SELF TEST PASSED\r\n\r\n");
         return 0;
     } else {
