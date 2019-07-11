@@ -150,6 +150,11 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
     if (error) return error;
 
+    /* Interrupt 1 Configuration */
+    lis2dh12_int1_cfg_t int1Cfg = {0};    // do not enable any interrupts yet
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
+    if (error) return error;
+
     /* FIFO control register */
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
@@ -169,13 +174,6 @@ int32_t Lis2dh12::init() {
     error = selfTest();
     if (error) return error;
 
-//    /* restart sensor */
-//    lis2dh12_ctrl_reg1_t ctrlReg_allOff = {0};
-//    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg_allOff, 1);
-//    if (error) return error;
-//    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
-//    if (error) return error;
-
     error = enableThsInterrupt();
     if (error) return error;
 
@@ -183,10 +181,6 @@ int32_t Lis2dh12::init() {
 }
 
 int32_t Lis2dh12::enableThsInterrupt() {
-
-    /* clear interrupt */
-    uint8_t data;
-    lis2dh12_read_reg(&dev_ctx, 0x31, &data, 1);
 
     /* Set threshold in mg */
     error = setThreshold(thresholdInMg);
