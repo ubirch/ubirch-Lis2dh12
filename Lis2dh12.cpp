@@ -82,19 +82,19 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
 }
 
 Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs,
-                   lis2dh12_odr_t _samplRate,
-                   lis2dh12_fs_t _fullScale) :
+                   lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale) :
         spi(_spi),
         cs(_cs),
         thresholdInMg(_thresholdInMg),
         durationInMs(_durationInMs),
         samplRate(_samplRate),
-        fullScale(_fullScale),
-        waitingForThresholdInterrupt(false)
+        fullScale(_fullScale)
 {
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
     dev_ctx.handle = this;
+
+    waitingForThresholdInterrupt = false;
 }
 
 
@@ -290,9 +290,6 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
 
 int32_t Lis2dh12::selfTest() {
     uint8_t dataLevel = 0;
-    axis3bit16_t data_raw_acceleration;
-    memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
-
     acceleration_t selfTestArray[TEST_ARRAYSIZE];
     int32_t x_sum = 0;
     int32_t y_sum = 0;
@@ -313,7 +310,7 @@ int32_t Lis2dh12::selfTest() {
     if (error) return error;
 
     for (int i = 0; i < dataLevel; i++) {
-        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+        error = getAcceleration(selfTestArray[0]);
         if (error) return error;
     }
 
@@ -326,12 +323,8 @@ int32_t Lis2dh12::selfTest() {
 
     /* read new values and save average of each axis */
     for (int i = 0; i < TEST_ARRAYSIZE; i++) {
-        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+        error = getAcceleration(selfTestArray[i]);
         if (error) return error;
-
-        selfTestArray[i].x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
-        selfTestArray[i].y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
-        selfTestArray[i].z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
 
         x_sum += selfTestArray[i].x_axis;
         y_sum += selfTestArray[i].y_axis;
@@ -360,7 +353,7 @@ int32_t Lis2dh12::selfTest() {
     if (error) return error;
 
     for (int i = 0; i < dataLevel; i++) {
-        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+        error = getAcceleration(selfTestArray[0]);
         if (error) return error;
     }
 
@@ -373,12 +366,8 @@ int32_t Lis2dh12::selfTest() {
 
     /* read new values and save average of each axis */
     for (int i = 0; i < TEST_ARRAYSIZE; i++) {
-        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+        error = getAcceleration(selfTestArray[i]);
         if (error) return error;
-
-        selfTestArray[i].x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
-        selfTestArray[i].y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
-        selfTestArray[i].z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
 
         x_sum += selfTestArray[i].x_axis;
         y_sum += selfTestArray[i].y_axis;
@@ -475,24 +464,6 @@ int16_t Lis2dh12::waitForThresholdInt() {
     return error;
 }
 
-int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
-    axis3bit16_t data_raw_acceleration;
-
-    memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
-
-    for (int i = 0; i < ACC_ARRAYSIZE; i++) {
-        /* Read accelerometer data */
-        error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
-        if (error) return error;
-
-        accelerationArray[i].x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
-        accelerationArray[i].y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
-        accelerationArray[i].z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
-    }
-
-    return error;
-}
-
 int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
 
     switch (fullScale) {
@@ -509,11 +480,35 @@ int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
     }
 }
 
+int32_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
+    axis3bit16_t data_raw_acceleration;
+    memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
+
+    /* read accelerometer data from sensor */
+    error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+
+    acceleration.x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
+    acceleration.y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);
+    acceleration.z_axis = convert_to_mg(data_raw_acceleration.i16bit[2]);
+
+    return error;
+}
+
+int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
+
+    for (int i = 0; i < ACC_ARRAYSIZE; i++) {
+        error = getAcceleration(accelerationArray[i]);
+        if (error) return error;
+    }
+
+    return error;
+}
+
 void Lis2dh12::readAllRegisters(void){
 
-	uint8_t data[10];
+    uint8_t data[10];
     for (int i = 0x1E; i <= 0x33; ++i) {
-		lis2dh12_read_reg(&dev_ctx, i, data, 1);
+        lis2dh12_read_reg(&dev_ctx, i, data, 1);
         EDEBUG_PRINTF("REG:%02x = %02x\r\n", i, data[0]);
-	}
+    }
 }
