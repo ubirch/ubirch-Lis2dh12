@@ -169,14 +169,17 @@ int32_t Lis2dh12::init() {
     error = selfTest();
     if (error) return error;
 
+    readAllRegisters();
+
+//    /* restart sensor */
+//    lis2dh12_ctrl_reg1_t ctrlReg_allOff = {0};
+//    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg_allOff, 1);
+//    if (error) return error;
+//    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+//    if (error) return error;
+
     error = enableThsInterrupt();
     if (error) return error;
-
-//    /*
-//     * Read (-> clear) REFERENCE register
-//     */
-//    uint8_t buff;
-//    error = lis2dh12_filter_reference_get(&dev_ctx, &buff);
 
     return error;
 }
