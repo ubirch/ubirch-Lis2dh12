@@ -511,3 +511,7 @@ void Lis2dh12::readAllRegisters(void){
         EDEBUG_PRINTF("REG:%02x = %02x\r\n", i, data[0]);
     }
 }
+
+bool Lis2dh12::isWaitingForThresholdInterrupt() {
+    return waitingForThresholdInterrupt;
+}

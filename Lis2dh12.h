@@ -52,6 +52,8 @@ public:
 
     int16_t resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun);
 
+    bool isWaitingForThresholdInterrupt();
+
     int16_t waitForOverrunInt();
 
     int16_t waitForThresholdInt();
@@ -65,8 +67,6 @@ public:
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
-
-    bool waitingForThresholdInterrupt;
 
 private:
     int32_t setDuration(uint16_t userDurationInMs);
@@ -90,6 +90,7 @@ private:
     uint16_t durationInMs;
     lis2dh12_odr_t samplRate;
     lis2dh12_fs_t fullScale;
+    bool waitingForThresholdInterrupt;
 
 };
 
