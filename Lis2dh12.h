@@ -46,23 +46,23 @@ public:
 
     int32_t init();
 
+    int32_t selfTest();
+
     int32_t getAcceleration(acceleration_t &acceleration);
 
     int32_t getAccelerationFifo(acceleration_t *accelerationArray);
 
     int16_t resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun);
 
-    bool isWaitingForThresholdInterrupt();
-
     int16_t waitForOverrunInt();
 
     int16_t waitForThresholdInt();
 
-	void readAllRegisters(void);
+    bool isWaitingForThresholdInterrupt();
 
-    int32_t checkFifoStatus();
+    int32_t activateSensor();
 
-    int32_t selfTest();
+    int32_t powerDown();
 
     int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
@@ -79,6 +79,10 @@ private:
 
     int16_t resetInterrupt();
 
+    int32_t checkFifoStatus();
+
+    void readAllRegisters(void);
+
     uint8_t tx_buffer[1000];
 
     SPI *spi;
@@ -91,7 +95,6 @@ private:
     lis2dh12_odr_t samplRate;
     lis2dh12_fs_t fullScale;
     bool waitingForThresholdInterrupt;
-
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H

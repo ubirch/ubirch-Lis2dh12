@@ -134,7 +134,7 @@ int32_t Lis2dh12::init() {
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
     ctrlReg4.bdu = 1;                       // Enable Block Data Update
     ctrlReg4.fs = fullScale;                // Set full scale
-    ctrlReg4.hr = 0;                        // Set device in continuous mode with 10 bit resolution (normal mode)
+    ctrlReg4.hr = 0;                        // Set device to normal or low power mode
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     if (error) return error;
 
@@ -161,14 +161,7 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     if (error) return error;
 
-    /* ODR, LPen, Axes enable */
-    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
-    ctrlReg1.odr = samplRate;               // Set Sampling Rate
-    ctrlReg1.xen = 1;                       // Enable All Axes
-    ctrlReg1.yen = 1;
-    ctrlReg1.zen = 1;
-    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1,
-                               1); // writing to CTRL_REG1 turns sensor on
+    error = activateSensor();
     if (error) return error;
 
     error = selfTest();
@@ -180,7 +173,29 @@ int32_t Lis2dh12::init() {
     return error;
 }
 
+int32_t Lis2dh12::activateSensor() {
+    /* ODR, LPen, Axes enable */
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
+    ctrlReg1.odr = samplRate;               // Set sampling rate
+    ctrlReg1.lpen = 1;                      // Set low power mode
+    ctrlReg1.xen = 1;                       // Enable all axes
+    ctrlReg1.yen = 1;
+    ctrlReg1.zen = 1;
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn on sensor
+    return error;
+}
+
+int32_t Lis2dh12::powerDown() {
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};    // Disable all axes and set sampling rate to 0, SPI stays active
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+    return error;
+}
+
 int32_t Lis2dh12::enableThsInterrupt() {
+
+    /* clear interrupt */
+    uint8_t data;
+    lis2dh12_read_reg(&dev_ctx, LIS2DH12_INT1_SRC, &data, 1);
 
     /* Set threshold in mg */
     error = setThreshold(thresholdInMg);
