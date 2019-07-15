@@ -134,7 +134,7 @@ int32_t Lis2dh12::init() {
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
     ctrlReg4.bdu = 1;                       // Enable Block Data Update
     ctrlReg4.fs = fullScale;                // Set full scale
-    ctrlReg4.hr = 0;                        // Set device to normal or low power mode
+    ctrlReg4.hr = 0;                        // Set device to normal mode
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     if (error) return error;
 
@@ -177,7 +177,8 @@ int32_t Lis2dh12::activateSensor() {
     /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     ctrlReg1.odr = samplRate;               // Set sampling rate
-    ctrlReg1.lpen = 1;                      // Set low power mode
+    ctrlReg1.lpen = 0;                      // Set normal mode (10 bit resolution)
+//    ctrlReg1.lpen = 1;                      // Set low power mode (8 bit resolution)
     ctrlReg1.xen = 1;                       // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
