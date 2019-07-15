@@ -65,7 +65,7 @@ public:
 
     bool isWaitingForThresholdInterrupt();
 
-    int32_t activateSensor(resolution_mode_t mode);
+    int32_t activateSensor();
 
     int32_t powerDown();
 

@@ -161,7 +161,7 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     if (error) return error;
 
-    error = activateSensor(NORMAL_10bit);
+    error = activateSensor();
     if (error) return error;
 
     error = selfTest();
@@ -173,11 +173,11 @@ int32_t Lis2dh12::init() {
     return error;
 }
 
-int32_t Lis2dh12::activateSensor(resolution_mode_t mode) {
+int32_t Lis2dh12::activateSensor() {
     /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     ctrlReg1.odr = samplRate;               // Set sampling rate
-    ctrlReg1.lpen = mode;                   // Set normal mode (10 bit resolution) or low power mode (8 bit resolution)
+    ctrlReg1.lpen = NORMAL_10bit;           // Set normal mode (10 bit resolution) or low power mode (8 bit resolution)
     ctrlReg1.xen = 1;                       // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
