@@ -37,6 +37,11 @@ typedef struct {
     int16_t z_axis;
 }acceleration_t;
 
+typedef enum {
+    NORMAL_10bit = 0,
+    LOW_POWER_8bit = 1,
+} resolution_mode_t;
+
 class Lis2dh12 {
 public:
     Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
@@ -60,7 +65,7 @@ public:
 
     bool isWaitingForThresholdInterrupt();
 
-    int32_t activateSensor();
+    int32_t activateSensor(resolution_mode_t mode);
 
     int32_t powerDown();
 
