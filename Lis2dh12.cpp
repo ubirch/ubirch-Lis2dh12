@@ -193,8 +193,7 @@ int32_t Lis2dh12::powerDown() {
 }
 
 int32_t Lis2dh12::enableThsInterrupt() {
-
-    /* clear interrupt */
+    /* clear interrupts first */
     uint8_t data;
     lis2dh12_read_reg(&dev_ctx, LIS2DH12_INT1_SRC, &data, 1);
 
@@ -434,6 +433,17 @@ int32_t Lis2dh12::checkFifoStatus() {
     return error;
 }
 
+int32_t Lis2dh12::checkFifoStatus(bool *_watermark, bool *_overrun) {
+    lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
+
+    error = lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
+
+    *_watermark = fifoSrcReg.wtm;
+    *_overrun = fifoSrcReg.ovrn_fifo;
+
+    return error;
+}
+
 /* reset latched interrupt */
 int16_t Lis2dh12::resetInterrupt() {
     lis2dh12_int1_src_t int1Src = {0};
@@ -444,15 +454,12 @@ int16_t Lis2dh12::resetInterrupt() {
 }
 
 /* reset latched interrupt and return cause */
-int16_t Lis2dh12::resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun) {
+int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
     lis2dh12_int1_src_t int1Src = {0};
 
     error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
-    if (error) return error;
 
     *_xyzHighEvent = int1Src.ia;
-
-    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, _overrun);
 
     return error;
 }

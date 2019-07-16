@@ -57,7 +57,9 @@ public:
 
     int32_t getAccelerationFifo(acceleration_t *accelerationArray);
 
-    int16_t resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun);
+    int32_t checkFifoStatus(bool *_watermark, bool *_overrun);
+
+    int16_t resetInterrupt(bool *_xyzHighEvent);
 
     int16_t waitForWatermarkInt();
 
