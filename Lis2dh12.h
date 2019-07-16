@@ -59,7 +59,7 @@ public:
 
     int16_t resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun);
 
-    int16_t waitForOverrunInt();
+    int16_t waitForWatermarkInt();
 
     int16_t waitForThresholdInt();
 

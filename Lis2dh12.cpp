@@ -128,23 +128,6 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
 
-    /* Block Data Update, Big/Little Endian data selection,
-     * Full-scale selection, Operating mode selection, Self-test enable,
-     * SPI serial interface mode selection */
-    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
-    ctrlReg4.bdu = 1;                       // Enable Block Data Update
-    ctrlReg4.fs = fullScale;                // Set full scale
-    ctrlReg4.hr = 0;                        // Set device to normal mode
-    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
-    if (error) return error;
-
-    /* FIFO enable and latch interrupt request */
-    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
-    ctrlReg5.fifo_en = 1;                   // Enable FIFO
-    ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
-    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
-    if (error) return error;
-
     /* Interrupt 2 enable */
     lis2dh12_ctrl_reg6_t ctrlReg6 = {0};    // do not enable any interrupt on interrupt 2 pin
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
@@ -155,9 +138,27 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
 
+    /* Block Data Update, Big/Little Endian data selection,
+     * Full-scale selection, Operating mode selection, Self-test enable,
+     * SPI serial interface mode selection */
+    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
+    ctrlReg4.bdu = 1;                       // Enable Block Data Update
+    ctrlReg4.fs = fullScale;                // Set full scale
+    ctrlReg4.hr = 0;                        // Set device to normal / low power mode
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
+    if (error) return error;
+
+    /* FIFO enable and latch interrupt request */
+    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
+    ctrlReg5.fifo_en = 1;                   // Enable FIFO
+    ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
+    if (error) return error;
+
     /* FIFO control register */
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
+    fifoCtrlReg.fth = ACC_ARRAYSIZE + 1;            // set watermark to size of entry
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     if (error) return error;
 
@@ -457,9 +458,9 @@ int16_t Lis2dh12::resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun) {
 }
 
 /* activates interrupt when FIFO full and deactivates activity interrupt */
-int16_t Lis2dh12::waitForOverrunInt() {
+int16_t Lis2dh12::waitForWatermarkInt() {
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    ctrlReg3.i1_overrun = 1;
+    ctrlReg3.i1_wtm = 1;
     ctrlReg3.i1_ia1 = 0;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if (!error) waitingForThresholdInterrupt = false;
@@ -470,7 +471,7 @@ int16_t Lis2dh12::waitForOverrunInt() {
 /* deactivates interrupt when FIFO full and activates activity interrupt */
 int16_t Lis2dh12::waitForThresholdInt() {
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    ctrlReg3.i1_overrun = 0;
+    ctrlReg3.i1_wtm = 0;
     ctrlReg3.i1_ia1 = 1;
     error = lis2dh12_pin_int1_config_set(&dev_ctx, &ctrlReg3);
     if (!error) waitingForThresholdInterrupt = true;
