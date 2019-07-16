@@ -28,7 +28,7 @@
 #include "mbed.h"
 #include "lis2dh12_reg.h"
 
-#define ACC_ARRAYSIZE 32    // size of accelerometer FIFO
+#define ACC_ARRAYSIZE 16    // size of accelerometer FIFO
 #define TEST_ARRAYSIZE 5    // array for sensor self test
 
 typedef struct {
