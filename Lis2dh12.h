@@ -59,6 +59,8 @@ public:
 
     int32_t checkFifoStatus(bool *_watermark, bool *_overrun);
 
+    int32_t checkFifoDataLevel();
+
     int16_t resetInterrupt(bool *_xyzHighEvent);
 
     int16_t waitForWatermarkInt();
@@ -85,8 +87,6 @@ private:
     int32_t enableThsInterrupt();
 
     int16_t resetInterrupt();
-
-    int32_t checkFifoStatus();
 
     void readAllRegisters(void);
 

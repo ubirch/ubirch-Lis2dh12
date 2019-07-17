@@ -158,7 +158,7 @@ int32_t Lis2dh12::init() {
     /* FIFO control register */
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
-    fifoCtrlReg.fth = ACC_ARRAYSIZE + 1;            // set watermark to size of entry
+    fifoCtrlReg.fth = ACC_ARRAYSIZE;            // set watermark to size of entry
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     if (error) return error;
 
@@ -414,20 +414,15 @@ int32_t Lis2dh12::selfTest() {
     }
 }
 
-int32_t Lis2dh12::checkFifoStatus() {
-    uint8_t fifoDataLevel = 0;
-    uint8_t fifoOverrun = 0;
+int32_t Lis2dh12::checkFifoDataLevel() {
+    lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
 
-    error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
-    if(error) return error;
+    error = lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
 
-    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
-    if(error) return error;
-
-    if (fifoOverrun) {
-        EDEBUG_PRINTF("overrun. %02d unread values in FIFO | ", fifoDataLevel);
+    if (fifoSrcReg.ovrn_fifo) {
+        EDEBUG_PRINTF("Overrun. %02d unread values in FIFO\r\n", fifoSrcReg.fss);
     } else {
-        EDEBUG_PRINTF("No ovrn. %02d unread values in FIFO | ", fifoDataLevel);
+        EDEBUG_PRINTF("No overrun. %02d unread values in FIFO\r\n", fifoSrcReg.fss);
     }
 
     return error;
