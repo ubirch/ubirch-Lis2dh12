@@ -128,23 +128,6 @@ int32_t Lis2dh12::init() {
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
 
-    /* Block Data Update, Big/Little Endian data selection,
-     * Full-scale selection, Operating mode selection, Self-test enable,
-     * SPI serial interface mode selection */
-    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
-    ctrlReg4.bdu = 1;                       // Enable Block Data Update
-    ctrlReg4.fs = fullScale;                // Set full scale
-    ctrlReg4.hr = 0;                        // Set device to normal mode
-    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
-    if (error) return error;
-
-    /* FIFO enable and latch interrupt request */
-    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
-    ctrlReg5.fifo_en = 1;                   // Enable FIFO
-    ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
-    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
-    if (error) return error;
-
     /* Interrupt 2 enable */
     lis2dh12_ctrl_reg6_t ctrlReg6 = {0};    // do not enable any interrupt on interrupt 2 pin
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
@@ -153,6 +136,23 @@ int32_t Lis2dh12::init() {
     /* Interrupt 1 Configuration */
     lis2dh12_int1_cfg_t int1Cfg = {0};    // do not enable any interrupts yet
     error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
+    if (error) return error;
+
+    /* Block Data Update, Big/Little Endian data selection,
+     * Full-scale selection, Operating mode selection, Self-test enable,
+     * SPI serial interface mode selection */
+    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
+    ctrlReg4.bdu = 1;                       // Enable Block Data Update
+    ctrlReg4.fs = fullScale;                // Set full scale
+    ctrlReg4.hr = 0;                        // Set device to normal / low power mode
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
+    if (error) return error;
+
+    /* FIFO enable and latch interrupt request */
+    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
+    ctrlReg5.fifo_en = 1;                   // Enable FIFO
+    ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
     if (error) return error;
 
     /* FIFO control register */
@@ -192,8 +192,7 @@ int32_t Lis2dh12::powerDown() {
 }
 
 int32_t Lis2dh12::enableThsInterrupt() {
-
-    /* clear interrupt */
+    /* clear interrupts first */
     uint8_t data;
     lis2dh12_read_reg(&dev_ctx, LIS2DH12_INT1_SRC, &data, 1);
 
@@ -414,21 +413,22 @@ int32_t Lis2dh12::selfTest() {
     }
 }
 
-int32_t Lis2dh12::checkFifoStatus() {
-    uint8_t fifoDataLevel = 0;
-    uint8_t fifoOverrun = 0;
+int32_t Lis2dh12::checkFifoDataLevel() {
+    lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
 
-    error = lis2dh12_fifo_data_level_get(&dev_ctx, &fifoDataLevel);
-    if(error) return error;
+    error = lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
+    if (error) return error;
 
-    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, &fifoOverrun);
-    if(error) return error;
+    EDEBUG_PRINTF("%d unread values in FIFO\r\n", fifoSrcReg.fss);
+    return error;
+}
 
-    if (fifoOverrun) {
-        EDEBUG_PRINTF("overrun. %02d unread values in FIFO | ", fifoDataLevel);
-    } else {
-        EDEBUG_PRINTF("No ovrn. %02d unread values in FIFO | ", fifoDataLevel);
-    }
+int32_t Lis2dh12::checkFifoStatus(bool *_overrun) {
+    lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
+
+    error = lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
+
+    *_overrun = fifoSrcReg.ovrn_fifo;
 
     return error;
 }
@@ -442,16 +442,13 @@ int16_t Lis2dh12::resetInterrupt() {
     return error;
 }
 
-/* reset latched interrupt and return cause */
-int16_t Lis2dh12::resetInterrupt(uint8_t *_xyzHighEvent, uint8_t *_overrun) {
+/* reset latched interrupt and check cause */
+int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
     lis2dh12_int1_src_t int1Src = {0};
 
     error = lis2dh12_int1_gen_source_get(&dev_ctx, &int1Src);
-    if (error) return error;
 
     *_xyzHighEvent = int1Src.ia;
-
-    error = lis2dh12_fifo_ovr_flag_get(&dev_ctx, _overrun);
 
     return error;
 }
