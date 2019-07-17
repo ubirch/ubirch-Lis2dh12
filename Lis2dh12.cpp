@@ -418,13 +418,9 @@ int32_t Lis2dh12::checkFifoDataLevel() {
     lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
 
     error = lis2dh12_fifo_status_get(&dev_ctx, &fifoSrcReg);
+    if (error) return error;
 
-    if (fifoSrcReg.ovrn_fifo) {
-        EDEBUG_PRINTF("Overrun. %02d unread values in FIFO\r\n", fifoSrcReg.fss);
-    } else {
-        EDEBUG_PRINTF("No overrun. %02d unread values in FIFO\r\n", fifoSrcReg.fss);
-    }
-
+    EDEBUG_PRINTF("%d unread values in FIFO\r\n", fifoSrcReg.fss);
     return error;
 }
 
