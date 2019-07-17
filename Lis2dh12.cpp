@@ -429,6 +429,7 @@ int32_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
 
     /* read accelerometer data from sensor */
     error = lis2dh12_acceleration_raw_get(&dev_ctx, data_raw_acceleration.u8bit);
+    if (error) return error;
 
     acceleration.x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
     acceleration.y_axis = convert_to_mg(data_raw_acceleration.i16bit[1]);

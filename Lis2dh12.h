@@ -51,25 +51,9 @@ public:
 
     int32_t init();
 
-    int32_t selfTest();
-
-    int32_t getAcceleration(acceleration_t &acceleration);
-
     int32_t getAccelerationFifo(acceleration_t *accelerationArray);
 
-    int32_t checkFifoStatus(bool *_overrun);
-
-    int32_t checkFifoDataLevel();
-
-    int16_t resetInterrupt(bool *_xyzHighEvent);
-
     int16_t resetInterrupt();
-
-    int16_t waitForOverrunInt();
-
-    int16_t waitForThresholdInt();
-
-    bool isWaitingForThresholdInterrupt();
 
     int32_t activateSensor();
 
@@ -80,13 +64,29 @@ public:
     int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
 private:
+    int32_t selfTest();
+
+    int32_t enableThsInterrupt();
+
     int32_t setDuration(uint16_t userDurationInMs);
 
     int32_t setThreshold(uint16_t userThresholdInMg);
 
+    int32_t getAcceleration(acceleration_t &acceleration);
+
     int16_t convert_to_mg(int16_t rawData);
 
-    int32_t enableThsInterrupt();
+    int16_t resetInterrupt(bool *_xyzHighEvent);
+
+    int32_t checkFifoStatus(bool *_overrun);
+
+    int32_t checkFifoDataLevel();
+
+    int16_t waitForOverrunInt();
+
+    int16_t waitForThresholdInt();
+
+    bool isWaitingForThresholdInterrupt();
 
     void readAllRegisters(void);
 
