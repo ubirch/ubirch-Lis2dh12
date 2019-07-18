@@ -104,7 +104,7 @@ Lis2dh12::~Lis2dh12() {
 
 int32_t Lis2dh12::init() {
     /*
-     *  Check device ID
+     *  Check sensor ID
      */
     uint8_t whoamI;
     error = lis2dh12_device_id_get(&dev_ctx, &whoamI);
@@ -112,10 +112,10 @@ int32_t Lis2dh12::init() {
 
     if (whoamI != LIS2DH12_ID)
     {
-        EDEBUG_PRINTF("Device not found\r\n");
+        EDEBUG_PRINTF("Sensor ID check failed\r\n");
         return 0xffff;
     }else{
-        EDEBUG_PRINTF("Device ID check OK. Initialize device...\r\n");
+        EDEBUG_PRINTF("Sensor ID check OK\r\n");
     }
 
     /* High-pass filter */
@@ -233,22 +233,26 @@ int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     switch (fs) {
         case LIS2DH12_2g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
-            EDEBUG_PRINTF("Full Scale: 2g\r\n");
+            EDEBUG_PRINTF("Full Scale: 2 g\r\n");
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 4);
             break;
         case LIS2DH12_4g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
-            EDEBUG_PRINTF("Full Scale: 4g\r\n");
+            EDEBUG_PRINTF("Full Scale: 4 g\r\n");
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 5);
             break;
         case LIS2DH12_8g:
             int1Ths.ths = (uint8_t) (userThresholdInMg / 62);
-            EDEBUG_PRINTF("Full Scale: 8g\r\n");
+            EDEBUG_PRINTF("Full Scale: 8 g\r\n");
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths * 62);
             break;
         case LIS2DH12_16g:
             int1Ths.ths = (uint8_t) (userThresholdInMg / 186);
-            EDEBUG_PRINTF("Full Scale: 16g\r\n");
+            EDEBUG_PRINTF("Full Scale: 16 g\r\n");
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths * 186);
             break;
         default:
-            EDEBUG_PRINTF("Threshold could not be set.\r\n\r\n");
+            EDEBUG_PRINTF("ERROR setting threshold. Undefined full-scale.\r\n");
             return error;
     }
 
@@ -266,34 +270,41 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     switch (odr) {
         case LIS2DH12_ODR_1Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 1000);
-            EDEBUG_PRINTF("Sampling Rate: 1Hz\r\n");
+            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 1000);
+            EDEBUG_PRINTF("Sampling Rate: 1 Hz\r\n");
             break;
         case LIS2DH12_ODR_10Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 100);
-            EDEBUG_PRINTF("Sampling Rate: 10Hz\r\n");
+            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 100);
+            EDEBUG_PRINTF("Sampling Rate: 10 Hz\r\n");
             break;
         case LIS2DH12_ODR_25Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 40);
-            EDEBUG_PRINTF("Sampling Rate: 25Hz\r\n");
+            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 40);
+            EDEBUG_PRINTF("Sampling Rate: 25 Hz\r\n");
             break;
         case LIS2DH12_ODR_50Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 20);
-            EDEBUG_PRINTF("Sampling Rate: 50Hz\r\n");
+            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 20);
+            EDEBUG_PRINTF("Sampling Rate: 50 Hz\r\n");
             break;
         case LIS2DH12_ODR_100Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 10);
-            EDEBUG_PRINTF("Sampling Rate: 100Hz\r\n");
+            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 10);
+            EDEBUG_PRINTF("Sampling Rate: 100 Hz\r\n");
             break;
         case LIS2DH12_ODR_200Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 5);
-            EDEBUG_PRINTF("Sampling Rate: 200Hz\r\n");
+            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 5);
+            EDEBUG_PRINTF("Sampling Rate: 200 Hz\r\n");
             break;
         case LIS2DH12_ODR_400Hz:
-            int1Dur.d = (uint8_t) ((userDurationInMs * 2) / 5);
-            EDEBUG_PRINTF("Sampling Rate: 400Hz\r\n");
+            int1Dur.d = (uint8_t) ((userDurationInMs << 1) / 5);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", (int1Dur.d * 5) >> 1);
+            EDEBUG_PRINTF("Sampling Rate: 400 Hz\r\n");
             break;
         default:
-            EDEBUG_PRINTF("Duration could not be set.\r\n\r\n");
+            EDEBUG_PRINTF("ERROR setting duration. Undefined sampling rate.\r\n");
             return error;
     }
 
@@ -408,7 +419,7 @@ int32_t Lis2dh12::selfTest() {
         EDEBUG_PRINTF("SELF TEST PASSED\r\n");
         return 0;
     } else {
-        EDEBUG_PRINTF(" - - - SELF TEST FAILED - - - \r\n\r\n");
+        EDEBUG_PRINTF(" - - - SELF TEST FAILED - - - \r\n");
         return 0xffff;
     }
 }
@@ -450,6 +461,7 @@ int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
         case LIS2DH12_16g:
             return ((rawData * 3) >> 2);
         default:
+            EDEBUG_PRINTF("ERROR converting raw acceleration data. Undefined full-scale.\r\n");
             return 0xffff;
     }
 }
