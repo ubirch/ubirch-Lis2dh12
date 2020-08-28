@@ -34,17 +34,15 @@ int32_t Lis2dh12::platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSiz
     const uint8_t spiSetup = 0xC0;
 
     uint8_t retVal = 0;
-    *cs = 0;
 
-    spi->write(spiSetup | regAddr);
+    i2c->write(spiSetup | regAddr);
 
     while(buffSize--)
     {
-        *buff = spi->write(0x00);
+        *buff = i2c->write(0x00);
         buff++;
     }
 
-    *cs = 1;
     return retVal;
 }
 
@@ -55,17 +53,14 @@ int32_t Lis2dh12::platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSi
 
     uint8_t retVal = 0;
 
-    *cs = 0;
-
-    spi->write(spiSetup | regAddr);
+    i2c->write(spiSetup | regAddr);
 
     while(buffSize--)
     {
-        spi->write(*buff);
+        i2c->write(*buff);
         buff++;
     }
 
-    *cs = 1;
     return retVal;
 }
 
@@ -81,10 +76,9 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
     return 0;
 }
 
-Lis2dh12::Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs,
-                   lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale) :
-        spi(_spi),
-        cs(_cs),
+Lis2dh12::Lis2dh12(I2C *_i2c, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
+                   lis2dh12_fs_t _fullScale) :
+        i2c(_i2c),
         thresholdInMg(_thresholdInMg),
         durationInMs(_durationInMs),
         samplRate(_samplRate),

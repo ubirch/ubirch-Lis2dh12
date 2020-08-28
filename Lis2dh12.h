@@ -44,7 +44,7 @@ typedef enum {
 
 class Lis2dh12 {
 public:
-    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
+    Lis2dh12(I2C *_i2c, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
              lis2dh12_fs_t _fullScale);
 
     virtual ~Lis2dh12();
@@ -92,8 +92,7 @@ private:
 
     uint8_t tx_buffer[1000];
 
-    SPI *spi;
-    DigitalOut *cs;
+    I2C *i2c;
     lis2dh12_ctx_t dev_ctx;
 
     int16_t error;
