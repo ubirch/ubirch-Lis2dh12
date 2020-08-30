@@ -111,7 +111,7 @@ int32_t Lis2dh12::init() {
 
     if (whoamI != LIS2DH12_ID)
     {
-        EDEBUG_PRINTF("Sensor ID check failed\r\n  Got: %d", whoamI);
+        EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%x - Got: 0x%x)\r\n", LIS2DH12_ID, whoamI);
         return 0xffff;
     }else{
         EDEBUG_PRINTF("Sensor ID check OK\r\n");
