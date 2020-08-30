@@ -34,6 +34,7 @@ int32_t Lis2dh12::platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSiz
     const uint8_t spiSetup = 0xC0;
 
     uint8_t retVal = 0;
+    *cs = 1;
 
     i2c->write(spiSetup | regAddr);
 
@@ -52,6 +53,7 @@ int32_t Lis2dh12::platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSi
     const uint8_t spiSetup = 0x40;
 
     uint8_t retVal = 0;
+    *cs = 1;
 
     i2c->write(spiSetup | regAddr);
 
@@ -76,9 +78,10 @@ int32_t read(void *handle, uint8_t regAddr, uint8_t* buff, uint16_t buffSize){
     return 0;
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
+Lis2dh12::Lis2dh12(I2C *_i2c, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
                    lis2dh12_fs_t _fullScale) :
         i2c(_i2c),
+        cs(_cs),
         thresholdInMg(_thresholdInMg),
         durationInMs(_durationInMs),
         samplRate(_samplRate),
@@ -87,6 +90,8 @@ Lis2dh12::Lis2dh12(I2C *_i2c, uint16_t _thresholdInMg, uint16_t _durationInMs, l
     dev_ctx.write_reg = write;
     dev_ctx.read_reg = read;
     dev_ctx.handle = this;
+
+    *cs = 1;
 
     waitingForThresholdInterrupt = false;
 }
@@ -106,7 +111,7 @@ int32_t Lis2dh12::init() {
 
     if (whoamI != LIS2DH12_ID)
     {
-        EDEBUG_PRINTF("Sensor ID check failed\r\n");
+        EDEBUG_PRINTF("Sensor ID check failed\r\n  Got: %d", whoamI);
         return 0xffff;
     }else{
         EDEBUG_PRINTF("Sensor ID check OK\r\n");
