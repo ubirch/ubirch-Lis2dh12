@@ -27,6 +27,7 @@
 
 #include "mbed.h"
 #include "lis2dh12_reg.h"
+#include "aconno_i2c.h"
 
 #define ACC_ARRAYSIZE 32    // size of accelerometer FIFO
 #define TEST_ARRAYSIZE 5    // array for sensor self test
@@ -59,10 +60,6 @@ public:
 
     int32_t powerDown();
 
-    int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
-
-    int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
-
 private:
     int32_t selfTest();
 
@@ -92,9 +89,11 @@ private:
 
     uint8_t tx_buffer[1000];
 
-    I2C *i2c;
+    aconno_i2c i2c;
     DigitalOut *cs;
-    lis2dh12_ctx_t dev_ctx;
+
+    int32_t readFromReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+    int32_t writeToReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
     int16_t error;
     uint16_t thresholdInMg;
