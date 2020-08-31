@@ -29,39 +29,27 @@
 
 
 int32_t Lis2dh12::platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
-    // Most significant bit represents read from register, bit after it
-    // represents address increment if multiple read, which is enabled.
-    const uint8_t spiSetup = 0xC0;
-
     uint8_t retVal = 0;
     *cs = 1;
 
-    i2c->write(spiSetup | regAddr);
+    i2c->start();
 
-    while(buffSize--)
-    {
-        *buff = i2c->write(0x00);
-        buff++;
-    }
+    retVal = i2c->read(regAddr, (char*) buff, buffSize);
+
+    i2c->stop();
 
     return retVal;
 }
 
 int32_t Lis2dh12::platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
-    // Most significant bit represents write from register, bit after it
-    // represents address increment if multiple write, which is enabled.
-    const uint8_t spiSetup = 0x40;
-
     uint8_t retVal = 0;
     *cs = 1;
 
-    i2c->write(spiSetup | regAddr);
+    i2c->start();
 
-    while(buffSize--)
-    {
-        i2c->write(*buff);
-        buff++;
-    }
+    retVal = i2c->write(regAddr, (const char*) buff, buffSize);
+
+    i2c->stop();
 
     return retVal;
 }
@@ -92,6 +80,7 @@ Lis2dh12::Lis2dh12(I2C *_i2c, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t
     dev_ctx.handle = this;
 
     *cs = 1;
+    i2c->frequency(10000);
 
     waitingForThresholdInterrupt = false;
 }
@@ -116,6 +105,11 @@ int32_t Lis2dh12::init() {
     }else{
         EDEBUG_PRINTF("Sensor ID check OK\r\n");
     }
+
+    lis2dh12_ctrl_reg0_t ctrlReg0 = {0};
+//    ctrlReg0.sdo_pu_disc = 1;    // pull-up disconnected to SDO/SA0 pin
+    error = lis2dh12_write_reg(&dev_ctx, LIS2DH12_CTRL_REG0, (uint8_t *) &ctrlReg0, 1);
+    if (error) return error;
 
     /* High-pass filter */
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
