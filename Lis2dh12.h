@@ -45,8 +45,9 @@ typedef enum {
 
 class Lis2dh12 {
 public:
-    Lis2dh12(I2C *_i2c, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
-             lis2dh12_fs_t _fullScale);
+    Lis2dh12(I2C *_i2c,
+             uint16_t _thresholdInMg, uint16_t _durationInMs,
+             lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale);
 
     virtual ~Lis2dh12();
 
@@ -90,7 +91,6 @@ private:
     uint8_t tx_buffer[1000];
 
     aconno_i2c i2c;
-    DigitalOut *cs;
 
     int32_t readFromReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
     int32_t writeToReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);

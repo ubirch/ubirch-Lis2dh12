@@ -30,25 +30,22 @@
 
 
 int32_t Lis2dh12::readFromReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
-    *cs = 1;
     return i2c.readFromReg((char)regAddr, (char*)buff, buffSize);
 }
 
 int32_t Lis2dh12::writeToReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
-    *cs = 1;
     return i2c.writeToReg((char)regAddr, (char*)buff, buffSize);
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs,
+Lis2dh12::Lis2dh12(I2C *_i2c,
+                   uint16_t _thresholdInMg, uint16_t _durationInMs,
                    lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale) :
-        i2c(_i2c, 0x19),
-        cs(_cs),
+        i2c(_i2c, LIS2DH12_I2C_ADD_H),
         thresholdInMg(_thresholdInMg),
         durationInMs(_durationInMs),
         samplRate(_samplRate),
         fullScale(_fullScale)
 {
-    *cs = 1;
     waitingForThresholdInterrupt = false;
 }
 
@@ -63,20 +60,30 @@ int32_t Lis2dh12::init() {
      */
     uint8_t whoamI;
     error = readFromReg(LIS2DH12_WHO_AM_I, &whoamI, 1);
-    if (error) return error;
+    if (error)
+    {
+        EDEBUG_PRINTF("reading from WHOAMI REG failed!\r\n");
+        return error;
+    }
 
     if (whoamI != LIS2DH12_ID)
     {
-        EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%x - Got: 0x%x)\r\n", LIS2DH12_ID, whoamI);
+        EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%02x - Got: 0x%02x)\r\n", LIS2DH12_ID, whoamI);
         return 0xffff;
     }else{
         EDEBUG_PRINTF("Sensor ID check OK\r\n");
     }
 
+    readAllRegisters();
+
     lis2dh12_ctrl_reg0_t ctrlReg0 = {0};
-//    ctrlReg0.sdo_pu_disc = 1;    // pull-up disconnected to SDO/SA0 pin
+    ctrlReg0.sdo_pu_disc = 1;    // pull-up disconnected to SDO/SA0 pin
     error = writeToReg(LIS2DH12_CTRL_REG0, (uint8_t *) &ctrlReg0, 1);
-    if (error) return error;
+    if (error)
+    {
+        EDEBUG_PRINTF("writing to CTRL REG 0 failed!\r\n");
+        return error;
+    }
 
     /* High-pass filter */
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
