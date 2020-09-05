@@ -27,7 +27,7 @@
 
 // returns 0 on success , non-0 on failure
 int32_t Lis2dh12::readFromReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
-    i2c->write(i2cAddr & 0xFE, reinterpret_cast<const char *>(&regAddr), 1);
+    i2c->write(i2cAddr & 0xFE, reinterpret_cast<const char *>(&regAddr), 1, true);
     return i2c->read(i2cAddr | 0x01, reinterpret_cast<char *>(buff), buffSize);
 }
 
@@ -78,21 +78,10 @@ int32_t Lis2dh12::init() {
 
     readAllRegisters();
 
-    lis2dh12_ctrl_reg0_t ctrlReg0 = {0};
-//    ctrlReg0.sdo_pu_disc = 1;    // pull-up disconnected to SDO/SA0 pin
-    error = writeToReg(LIS2DH12_CTRL_REG0, (uint8_t *) &ctrlReg0, 1);
-    if (error) {
-        EDEBUG_PRINTF("writing to CTRL REG 0 failed!\r\n");
-        return error;
-    }
-
     /* High-pass filter */
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
     error = writeToReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
-    if (error) {
-        EDEBUG_PRINTF("writing to CTRL REG 2 failed!\r\n");
-        return error;
-    }
+    if (error) return error;
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};    // do not enable any interrupts on interrupt 1 pin yet
@@ -138,14 +127,15 @@ int32_t Lis2dh12::init() {
     error = selfTest();
     if (error) return error;
 
-    error = enableThsInterrupt();
-    if (error) return error;
+//    error = enableThsInterrupt();
+//    if (error) return error;
 
     return error;
 }
 
 int32_t Lis2dh12::activateSensor() {
     /* ODR, LPen, Axes enable */
+    EDEBUG_PRINTF("enable sensor\r\n");
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     ctrlReg1.odr = samplRate;               // Set sampling rate
     ctrlReg1.lpen = NORMAL_10bit;           // Set normal mode (10 bit resolution) or low power mode (8 bit resolution)
@@ -300,6 +290,8 @@ int32_t Lis2dh12::selfTest() {
     acceleration_t absDif = {0};
     lis2dh12_fifo_src_reg_t fifo_src_reg;
 
+    EDEBUG_PRINTF("starting selftest\r\n");
+
     /* min and max values provided by sensor manufacturer (lis2dh12 datasheet) */
     int16_t minST = 17 << fullScale;
     int16_t maxST = 360 << fullScale;
@@ -312,7 +304,6 @@ int32_t Lis2dh12::selfTest() {
     if (error) return error;
 
     dataLevel = (uint8_t) fifo_src_reg.fss;
-
     for (int i = 0; i < dataLevel; i++) {
         error = getAcceleration(selfTestArray[0]);
         if (error) return error;
@@ -323,6 +314,8 @@ int32_t Lis2dh12::selfTest() {
         wait_ms(100);
         error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifo_src_reg, 1);
         if (error) return error;
+
+        dataLevel = (uint8_t) fifo_src_reg.fss;
     } while (dataLevel < TEST_ARRAYSIZE);
 
     /* read new values and save average of each axis */
@@ -362,7 +355,6 @@ int32_t Lis2dh12::selfTest() {
     if (error) return error;
 
     dataLevel = (uint8_t) fifo_src_reg.fss;
-
     for (int i = 0; i < dataLevel; i++) {
         error = getAcceleration(selfTestArray[0]);
         if (error) return error;
@@ -525,9 +517,11 @@ int32_t Lis2dh12::checkFifoDataLevel() {
 
 void Lis2dh12::readAllRegisters(void) {
 
-    uint8_t data[10];
+    uint8_t data[1];
+    EDEBUG_PRINTF("---------------\r\n");
     for (int i = 0x1E; i <= 0x33; ++i) {
         readFromReg(i, data, 1);
-        EDEBUG_PRINTF("REG:%02x = %02x\r\n", i, data[0]);
+        EDEBUG_PRINTF("REG 0x%02x = 0x%02x\r\n", i, data[0]);
     }
+    EDEBUG_PRINTF("---------------\r\n");
 }
