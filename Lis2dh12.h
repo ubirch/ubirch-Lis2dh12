@@ -65,6 +65,8 @@ private:
 
     int32_t enableThsInterrupt();
 
+    int32_t enableOverflowInterrupt();
+
     int32_t setDuration(uint16_t userDurationInMs);
 
     int32_t setThreshold(uint16_t userThresholdInMg);
@@ -87,15 +89,12 @@ private:
 
     void readAllRegisters(void);
 
-    uint8_t tx_buffer[1000];
-
     I2C *i2c;
     uint8_t i2cAddr;
 
     int32_t readFromReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
     int32_t writeToReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
-    int16_t error;
     uint16_t thresholdInMg;
     uint16_t durationInMs;
     lis2dh12_odr_t samplRate;
