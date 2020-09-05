@@ -185,16 +185,13 @@ int32_t Lis2dh12::enableThsInterrupt() {
 
 int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     lis2dh12_int1_ths_t int1Ths = {0};
-    lis2dh12_fs_t fs;
     lis2dh12_ctrl_reg4_t ctrl_reg4;
 
     error = readFromReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrl_reg4, 1);
     if (error) return error;
 
-    fs = static_cast<lis2dh12_fs_t>(ctrl_reg4.fs);
-
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
-    switch (fs) {
+    switch (ctrl_reg4.fs) {
         case LIS2DH12_2g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
             EDEBUG_PRINTF("Full Scale: 2 g\r\n");
@@ -226,15 +223,8 @@ int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
 
 int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     lis2dh12_int1_duration_t int1Dur = {0};
-    lis2dh12_odr_t odr;
-    lis2dh12_ctrl_reg1_t ctrl_reg1;
 
-    error = readFromReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrl_reg1, 1);
-    if (error) return error;
-
-    odr = static_cast<lis2dh12_odr_t>(ctrl_reg1.odr);
-
-    switch (odr) {
+    switch (samplRate) {
         case LIS2DH12_ODR_1Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 1000);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 1000);
@@ -288,7 +278,6 @@ int32_t Lis2dh12::selfTest() {
     acceleration_t firstAverage = {0};
     acceleration_t selfTestAverage = {0};
     acceleration_t absDif = {0};
-    lis2dh12_fifo_src_reg_t fifo_src_reg;
 
     EDEBUG_PRINTF("starting selftest\r\n");
 
@@ -300,11 +289,11 @@ int32_t Lis2dh12::selfTest() {
     wait_ms(100);
 
     /* read first available data and discard */
+    lis2dh12_fifo_src_reg_t fifo_src_reg;
     error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifo_src_reg, 1);
     if (error) return error;
 
-    dataLevel = (uint8_t) fifo_src_reg.fss;
-    for (int i = 0; i < dataLevel; i++) {
+    for (int i = 0; i < fifo_src_reg.fss; i++) {
         error = getAcceleration(selfTestArray[0]);
         if (error) return error;
     }
@@ -314,9 +303,7 @@ int32_t Lis2dh12::selfTest() {
         wait_ms(100);
         error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifo_src_reg, 1);
         if (error) return error;
-
-        dataLevel = (uint8_t) fifo_src_reg.fss;
-    } while (dataLevel < TEST_ARRAYSIZE);
+    } while (fifo_src_reg.fss < TEST_ARRAYSIZE);
 
     /* read new values and save average of each axis */
     for (int i = 0; i < TEST_ARRAYSIZE; i++) {
@@ -354,8 +341,7 @@ int32_t Lis2dh12::selfTest() {
     error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifo_src_reg, 1);
     if (error) return error;
 
-    dataLevel = (uint8_t) fifo_src_reg.fss;
-    for (int i = 0; i < dataLevel; i++) {
+    for (int i = 0; i < fifo_src_reg.fss; i++) {
         error = getAcceleration(selfTestArray[0]);
         if (error) return error;
     }
@@ -365,9 +351,7 @@ int32_t Lis2dh12::selfTest() {
         wait_ms(100);
         error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifo_src_reg, 1);
         if (error) return error;
-
-        dataLevel = (uint8_t) fifo_src_reg.fss;
-    } while (dataLevel < TEST_ARRAYSIZE);
+    } while (fifo_src_reg.fss < TEST_ARRAYSIZE);
 
     /* read new values and save average of each axis */
     for (int i = 0; i < TEST_ARRAYSIZE; i++) {
@@ -460,7 +444,7 @@ int16_t Lis2dh12::resetInterrupt() {
 
 /* reset latched threshold interrupt and check cause */
 int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
-    lis2dh12_int1_src_t int1Src = {0};
+    lis2dh12_int1_src_t int1Src;
 
     error = readFromReg(LIS2DH12_INT1_SRC, (uint8_t *) &int1Src, 1);
 
@@ -470,7 +454,7 @@ int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
 }
 
 int32_t Lis2dh12::checkFifoStatus(bool *_overrun) {
-    lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
+    lis2dh12_fifo_src_reg_t fifoSrcReg;
 
     error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifoSrcReg, 1);
 
@@ -481,7 +465,10 @@ int32_t Lis2dh12::checkFifoStatus(bool *_overrun) {
 
 /* activate fifo overrun interrupt and deactivate threshold interrupt */
 int16_t Lis2dh12::waitForOverrunInt() {
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    error = readFromReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
     ctrlReg3.i1_overrun = 1;
     ctrlReg3.i1_ia1 = 0;
     error = writeToReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
@@ -492,7 +479,10 @@ int16_t Lis2dh12::waitForOverrunInt() {
 
 /* deactivate fifo overrun interrupt and activates activity interrupt */
 int16_t Lis2dh12::waitForThresholdInt() {
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    error = readFromReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
     ctrlReg3.i1_overrun = 0;
     ctrlReg3.i1_ia1 = 1;
     error = writeToReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
