@@ -121,14 +121,10 @@ int32_t Lis2dh12::init() {
     error = activateSensor();
     if (error) return error;
 
-//    todo fix selftest
-//    error = selfTest();
-//    if (error) return error;
+    error = selfTest();
+//    if (error) return error;  todo notify but do not abort
 
     error = enableOverflowInterrupt();
-
-    readAllRegisters();
-
     return error;
 }
 
