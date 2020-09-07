@@ -59,7 +59,7 @@ Lis2dh12::~Lis2dh12() {
 }
 
 int32_t Lis2dh12::init() {
-    int16_t error;
+    int16_t error = 0;
 
     /*
      *  Check sensor ID
@@ -150,7 +150,7 @@ int32_t Lis2dh12::powerDown() {
 }
 
 int32_t Lis2dh12::enableThsInterrupt() {    // todo make ths and dur arguments of function + make function public -> only call from outside
-    int16_t error;
+    int16_t error = 0;
 
     /* clear interrupts first */
     uint8_t data;
@@ -190,7 +190,7 @@ int32_t Lis2dh12::enableThsInterrupt() {    // todo make ths and dur arguments o
 }
 
 int32_t Lis2dh12::enableOverflowInterrupt() {    // todo make function public -> only call from outside
-    int16_t error;
+    int16_t error = 0;
 
     /* clear interrupt register */
     uint8_t data;
@@ -207,7 +207,7 @@ int32_t Lis2dh12::enableOverflowInterrupt() {    // todo make function public ->
 }
 
 int32_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
-    int16_t error;
+    int16_t error = 0;
     lis2dh12_int1_ths_t int1Ths;
     lis2dh12_ctrl_reg4_t ctrl_reg4;
 
@@ -292,7 +292,7 @@ int32_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
 }
 
 int32_t Lis2dh12::selfTest() {
-    int16_t error;
+    int16_t error = 0;
     uint8_t dataLevel = 0;
     acceleration_t selfTestArray[TEST_ARRAYSIZE];
     int32_t x_sum = 0;
@@ -417,7 +417,7 @@ int32_t Lis2dh12::selfTest() {
 }
 
 int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
-    int16_t error;
+    int16_t error = 0;
 
     for (int i = 0; i < ACC_ARRAYSIZE; i++) {
         error = getAcceleration(accelerationArray[i]);
@@ -428,12 +428,12 @@ int32_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
 }
 
 int32_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
-    int16_t error;
+    int16_t error = 0;
     axis3bit16_t data_raw_acceleration;
     memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
 
     /* read accelerometer data from sensor */
-    error = readFromReg(LIS2DH12_OUT_X_L, data_raw_acceleration.u8bit, 6);
+    error = readFromReg(LIS2DH12_OUT_X_L | 0x80, data_raw_acceleration.u8bit, 6);
     if (error) return error;
 
     acceleration.x_axis = convert_to_mg(data_raw_acceleration.i16bit[0]);
@@ -469,7 +469,7 @@ int16_t Lis2dh12::resetInterrupt() {
 
 /* reset latched threshold interrupt and check cause */
 int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
-    int16_t error;
+    int16_t error = 0;
     lis2dh12_int1_src_t int1Src;
 
     error = readFromReg(LIS2DH12_INT1_SRC, (uint8_t *) &int1Src, 1);
@@ -480,7 +480,7 @@ int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
 }
 
 int32_t Lis2dh12::checkFifoStatus(bool *_overrun) {
-    int16_t error;
+    int16_t error = 0;
     lis2dh12_fifo_src_reg_t fifoSrcReg;
 
     error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifoSrcReg, 1);
@@ -492,7 +492,7 @@ int32_t Lis2dh12::checkFifoStatus(bool *_overrun) {
 
 /* activate fifo overrun interrupt and deactivate threshold interrupt */
 int16_t Lis2dh12::waitForOverrunInt() {
-    int16_t error;
+    int16_t error = 0;
     lis2dh12_ctrl_reg3_t ctrlReg3;
     error = readFromReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
@@ -507,7 +507,7 @@ int16_t Lis2dh12::waitForOverrunInt() {
 
 /* deactivate fifo overrun interrupt and activates activity interrupt */
 int16_t Lis2dh12::waitForThresholdInt() {
-    int16_t error;
+    int16_t error = 0;
     lis2dh12_ctrl_reg3_t ctrlReg3;
     error = readFromReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
@@ -525,7 +525,7 @@ bool Lis2dh12::isWaitingForThresholdInterrupt() {
 }
 
 int32_t Lis2dh12::checkFifoDataLevel() {
-    int16_t error;
+    int16_t error = 0;
     lis2dh12_fifo_src_reg_t fifoSrcReg;
 
     error = readFromReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifoSrcReg, 1);
