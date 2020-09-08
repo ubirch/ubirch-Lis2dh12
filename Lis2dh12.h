@@ -42,44 +42,43 @@ typedef enum {
     LOW_POWER_8bit = 1,
 } resolution_mode_t;
 
-class Lis2dh12 {
+class Lis2dh12
+{
 public:
-    Lis2dh12(I2C *_i2c,
-             uint16_t _thresholdInMg, uint16_t _durationInMs,
-             lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale);
+    Lis2dh12(I2C *_i2c, lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale);
 
     virtual ~Lis2dh12();
 
-    int32_t init();
+    int16_t init();
 
-    int32_t getAccelerationFifo(acceleration_t *accelerationArray);
+    int16_t getAccelerationFifo(acceleration_t *accelerationArray);
+
+    int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
+
+    int16_t enableFIFOOverflowInterrupt();
 
     int16_t resetInterrupt();
 
-    int32_t activateSensor();
+    int16_t enableSensor();
 
-    int32_t powerDown();
+    int16_t disableSensor();
 
 private:
-    int32_t selfTest();
+    int16_t selfTest();
 
-    int32_t enableThsInterrupt();
+    int16_t setDuration(uint16_t userDurationInMs);
 
-    int32_t enableOverflowInterrupt();
+    int16_t setThreshold(uint16_t userThresholdInMg);
 
-    int32_t setDuration(uint16_t userDurationInMs);
-
-    int32_t setThreshold(uint16_t userThresholdInMg);
-
-    int32_t getAcceleration(acceleration_t &acceleration);
+    int16_t getAcceleration(acceleration_t &acceleration);
 
     int16_t convert_to_mg(int16_t rawData);
 
     int16_t resetInterrupt(bool *_xyzHighEvent);
 
-    int32_t checkFifoStatus(bool *_overrun);
+    int16_t checkFifoStatus(bool *_overrun);
 
-    int32_t checkFifoDataLevel();
+    int16_t checkFifoDataLevel();
 
     int16_t waitForOverrunInt();
 
@@ -92,11 +91,9 @@ private:
     I2C *i2c;
     uint8_t i2cAddr;
 
-    int32_t readFromReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
-    int32_t writeToReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+    int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+    int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
-    uint16_t thresholdInMg;
-    uint16_t durationInMs;
     lis2dh12_odr_t samplRate;
     lis2dh12_fs_t fullScale;
     bool waitingForThresholdInterrupt;
