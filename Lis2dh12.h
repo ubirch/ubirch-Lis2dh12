@@ -63,8 +63,9 @@ public:
 
     int16_t disableSensor();
 
-private:
     int16_t selfTest();
+
+private:
 
     int16_t setDuration(uint16_t userDurationInMs);
 

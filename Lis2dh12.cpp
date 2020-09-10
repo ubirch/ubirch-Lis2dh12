@@ -26,10 +26,8 @@
 #include "Lis2dh12.h"
 
 // returns 0 on success , non-0 on failure
-int16_t Lis2dh12::readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize)
-{
-    if (buffSize > 1)
-    {
+int16_t Lis2dh12::readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
+    if (buffSize > 1) {
         regAddr |= 0x80;
     }
     i2c->write(i2cAddr & 0xFE, reinterpret_cast<const char *>(&regAddr), 1, true);
@@ -37,8 +35,7 @@ int16_t Lis2dh12::readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize)
 }
 
 // returns 0 on success , non-0 on failure
-int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len)
-{
+int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
     char dataToSend[len + 1];
 
     dataToSend[0] = regAddr;
@@ -55,12 +52,10 @@ Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScal
     i2c->frequency(100000);
 }
 
-
 Lis2dh12::~Lis2dh12() {
 }
 
-int16_t Lis2dh12::init()
-{
+int16_t Lis2dh12::init() {
     int16_t error = 0;
 
     /*
@@ -68,11 +63,9 @@ int16_t Lis2dh12::init()
      */
     uint8_t whoamI;
     error = readReg(LIS2DH12_WHO_AM_I, &whoamI, 1);
-    if (error)
-        return error;
+    if (error) return error;
 
-    if (whoamI != LIS2DH12_ID)
-    {
+    if (whoamI != LIS2DH12_ID) {
         EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%02x - Got: 0x%02x)\r\n", LIS2DH12_ID, whoamI);
         return 0xffff;
     } else {
@@ -97,8 +90,7 @@ int16_t Lis2dh12::init()
     /* Interrupt 1 Configuration */
     lis2dh12_int1_cfg_t int1Cfg = {0};    // do not enable any interrupts yet
     error = writeReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
-    if (error)
-        return error;
+    if (error) return error;
 
     /* Block Data Update, Big/Little Endian data selection,
      * Full-scale selection, Operating mode selection, Self-test enable,
@@ -108,33 +100,24 @@ int16_t Lis2dh12::init()
     ctrlReg4.fs = fullScale;                // Set full scale
     ctrlReg4.hr = 0;                        // todo make configurable -> 0: normal, 1: high resolution
     error = writeReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
-    if (error)
-        return error;
+    if (error) return error;
 
     /* FIFO enable and latch interrupt request */
     lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
     ctrlReg5.fifo_en = 1;                   // Enable FIFO
     ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
     error = writeReg(LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
-    if (error)
-        return error;
+    if (error) return error;
 
     /* FIFO control register */
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
     error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
-    if (error) return error;
-
-    error = selfTest();
-//    if (error) return error;  todo notify but do not abort
-
-    return 0;
+    return error;
 }
 
-int16_t Lis2dh12::enableSensor()
-{
+int16_t Lis2dh12::enableSensor() {
     /* ODR, LPen, Axes enable */
-    EDEBUG_PRINTF("enable sensor\r\n");
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     ctrlReg1.odr = samplRate;               // Set sampling rate
     ctrlReg1.lpen = NORMAL_10bit;           // Set normal mode (10 bit resolution) or low power mode (8 bit resolution)
@@ -144,14 +127,12 @@ int16_t Lis2dh12::enableSensor()
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn on sensor
 }
 
-int16_t Lis2dh12::disableSensor()
-{
+int16_t Lis2dh12::disableSensor() {
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};    // Disable all axes and set sampling rate to 0, SPI stays active
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
 }
 
-int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs)
-{
+int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs) {
     int16_t error = 0;
 
     /* clear interrupts first */
@@ -192,8 +173,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     return error;
 }
 
-int16_t Lis2dh12::enableFIFOOverflowInterrupt()
-{    // todo make function public -> only call from outside
+int16_t Lis2dh12::enableFIFOOverflowInterrupt() {    // todo make function public -> only call from outside
     int16_t error = 0;
 
     /* clear interrupt register */
@@ -211,8 +191,7 @@ int16_t Lis2dh12::enableFIFOOverflowInterrupt()
     return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
 }
 
-int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg)
-{
+int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     int16_t error = 0;
     lis2dh12_int1_ths_t int1Ths;
     lis2dh12_ctrl_reg4_t ctrl_reg4;
@@ -222,15 +201,12 @@ int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg)
         return error;
 
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
-    switch (ctrl_reg4.fs)
-    {
-        case LIS2DH12_2g:
-            int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
+    switch (ctrl_reg4.fs) {
+        case LIS2DH12_2g:int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
             EDEBUG_PRINTF("Full Scale: 2 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 4);
             break;
-        case LIS2DH12_4g:
-            int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
+        case LIS2DH12_4g:int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
             EDEBUG_PRINTF("Full Scale: 4 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 5);
             break;
@@ -252,12 +228,10 @@ int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg)
     return writeReg(LIS2DH12_INT1_THS, (uint8_t *) &int1Ths, 1);
 }
 
-int16_t Lis2dh12::setDuration(uint16_t userDurationInMs)
-{
+int16_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     lis2dh12_int1_duration_t int1Dur = {0};
 
-    switch (samplRate)
-    {
+    switch (samplRate) {
         case LIS2DH12_ODR_1Hz:int1Dur.d = (uint8_t) (userDurationInMs / 1000);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 1000);
             EDEBUG_PRINTF("Sampling Rate: 1 Hz\r\n");
@@ -266,8 +240,7 @@ int16_t Lis2dh12::setDuration(uint16_t userDurationInMs)
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 100);
             EDEBUG_PRINTF("Sampling Rate: 10 Hz\r\n");
             break;
-        case LIS2DH12_ODR_25Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 40);
+        case LIS2DH12_ODR_25Hz:int1Dur.d = (uint8_t) (userDurationInMs / 40);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 40);
             EDEBUG_PRINTF("Sampling Rate: 25 Hz\r\n");
             break;
@@ -299,8 +272,7 @@ int16_t Lis2dh12::setDuration(uint16_t userDurationInMs)
     return writeReg(LIS2DH12_INT1_DURATION, (uint8_t *) &int1Dur, 1);
 }
 
-int16_t Lis2dh12::selfTest()
-{
+int16_t Lis2dh12::selfTest() {
     int16_t error = 0;
     uint8_t dataLevel = 0;
     acceleration_t selfTestArray[TEST_ARRAYSIZE];
@@ -425,12 +397,10 @@ int16_t Lis2dh12::selfTest()
     }
 }
 
-int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray)
-{
+int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
     int16_t error = 0;
 
-    for (int i = 0; i < ACC_ARRAYSIZE; i++)
-    {
+    for (int i = 0; i < ACC_ARRAYSIZE; i++) {
         error = getAcceleration(accelerationArray[i]);
         if (error)
             return error;
@@ -439,8 +409,7 @@ int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray)
     return error;
 }
 
-int16_t Lis2dh12::getAcceleration(acceleration_t &acceleration)
-{
+int16_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
     int16_t error = 0;
     axis3bit16_t data_raw_acceleration;
     memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
@@ -493,8 +462,7 @@ int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
     return error;
 }
 
-int16_t Lis2dh12::checkFifoStatus(bool *_overrun)
-{
+int16_t Lis2dh12::checkFifoStatus(bool *_overrun) {
     int16_t error = 0;
     lis2dh12_fifo_src_reg_t fifoSrcReg;
 
@@ -540,8 +508,7 @@ bool Lis2dh12::isWaitingForThresholdInterrupt() {
     return waitingForThresholdInterrupt;
 }
 
-int16_t Lis2dh12::checkFifoDataLevel()
-{
+int16_t Lis2dh12::checkFifoDataLevel() {
     int16_t error = 0;
     lis2dh12_fifo_src_reg_t fifoSrcReg;
 
