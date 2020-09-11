@@ -51,7 +51,7 @@ public:
 
     int16_t init();
 
-    int16_t getAccelerationFifo(acceleration_t *accelerationArray);
+    int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
     int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
 

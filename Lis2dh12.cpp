@@ -202,11 +202,13 @@ int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
 
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
     switch (ctrl_reg4.fs) {
-        case LIS2DH12_2g:int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
+        case LIS2DH12_2g:
+            int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
             EDEBUG_PRINTF("Full Scale: 2 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 4);
             break;
-        case LIS2DH12_4g:int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
+        case LIS2DH12_4g:
+            int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
             EDEBUG_PRINTF("Full Scale: 4 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 5);
             break;
@@ -232,15 +234,18 @@ int16_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     lis2dh12_int1_duration_t int1Dur = {0};
 
     switch (samplRate) {
-        case LIS2DH12_ODR_1Hz:int1Dur.d = (uint8_t) (userDurationInMs / 1000);
+        case LIS2DH12_ODR_1Hz:
+            int1Dur.d = (uint8_t) (userDurationInMs / 1000);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 1000);
             EDEBUG_PRINTF("Sampling Rate: 1 Hz\r\n");
             break;
-        case LIS2DH12_ODR_10Hz:int1Dur.d = (uint8_t) (userDurationInMs / 100);
+        case LIS2DH12_ODR_10Hz:
+            int1Dur.d = (uint8_t) (userDurationInMs / 100);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 100);
             EDEBUG_PRINTF("Sampling Rate: 10 Hz\r\n");
             break;
-        case LIS2DH12_ODR_25Hz:int1Dur.d = (uint8_t) (userDurationInMs / 40);
+        case LIS2DH12_ODR_25Hz:
+            int1Dur.d = (uint8_t) (userDurationInMs / 40);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 40);
             EDEBUG_PRINTF("Sampling Rate: 25 Hz\r\n");
             break;
@@ -282,8 +287,6 @@ int16_t Lis2dh12::selfTest() {
     acceleration_t firstAverage = {0};
     acceleration_t selfTestAverage = {0};
     acceleration_t absDif = {0};
-
-    EDEBUG_PRINTF("starting selftest\r\n");
 
     /* min and max values provided by sensor manufacturer (lis2dh12 datasheet) */
     int16_t minST = 17 << fullScale;
@@ -397,13 +400,20 @@ int16_t Lis2dh12::selfTest() {
     }
 }
 
-int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
-    int16_t error = 0;
+int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool debug = false) {
+    if (debug) EDEBUG_PRINTF("      X   |   Y   |   Z   \r\n");
 
+    int16_t error = 0;
     for (int i = 0; i < ACC_ARRAYSIZE; i++) {
         error = getAcceleration(accelerationArray[i]);
-        if (error)
-            return error;
+        if (error) return error;
+
+        if (debug)
+            EDEBUG_PRINTF("%02d: %5d | %5d | %5d \r\n",
+                          i,
+                          accelerationArray[i].x_axis,
+                          accelerationArray[i].y_axis,
+                          accelerationArray[i].z_axis);
     }
 
     return error;
