@@ -173,7 +173,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     return error;
 }
 
-int16_t Lis2dh12::enableFIFOOverflowInterrupt() {    // todo make function public -> only call from outside
+int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
     int16_t error = 0;
 
     /* clear interrupt register */
@@ -188,6 +188,18 @@ int16_t Lis2dh12::enableFIFOOverflowInterrupt() {    // todo make function publi
     if (error) return error;
 
     ctrlReg3.i1_overrun = 1;                    // generate FIFO overrun interrupt on INT1 pin
+    return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+}
+
+int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
+    int16_t error = 0;
+
+    /* Interrupt 1 disable */
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
+    ctrlReg3.i1_overrun = 0;
     return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
 }
 
