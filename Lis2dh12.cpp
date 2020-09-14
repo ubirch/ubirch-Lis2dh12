@@ -415,6 +415,7 @@ int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool de
                           accelerationArray[i].y_axis,
                           accelerationArray[i].z_axis);
     }
+    if (debug) EDEBUG_PRINTF("\r\n");
 
     return error;
 }
