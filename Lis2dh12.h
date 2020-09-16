@@ -37,9 +37,11 @@ typedef struct {
     int16_t z_axis;
 }acceleration_t;
 
-typedef enum {
-    NORMAL_10bit = 0,
-    LOW_POWER_8bit = 1,
+typedef enum
+{
+    LOW_POWER_8bit = 0,
+    NORMAL_10bit = 1,
+    HIGH_RES_12bit = 2,
 } resolution_mode_t;
 
 class Lis2dh12
@@ -99,6 +101,8 @@ private:
     lis2dh12_odr_t samplRate;
     lis2dh12_fs_t fullScale;
     bool waitingForThresholdInterrupt;
+    int16_t setOperatingMode(resolution_mode_t res, lis2dh12_odr_t _samplRate);
+    int16_t setOperatingMode(lis2dh12_odr_t _samplRate, resolution_mode_t res, lis2dh12_fs_t _fullScale);
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H

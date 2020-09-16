@@ -92,16 +92,6 @@ int16_t Lis2dh12::init() {
     error = writeReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
 
-    /* Block Data Update, Big/Little Endian data selection,
-     * Full-scale selection, Operating mode selection, Self-test enable,
-     * SPI serial interface mode selection */
-    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
-    ctrlReg4.bdu = 1;                       // Enable Block Data Update
-    ctrlReg4.fs = fullScale;                // Set full scale
-    ctrlReg4.hr = 0;                        // todo make configurable -> 0: normal, 1: high resolution
-    error = writeReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
-    if (error) return error;
-
     /* FIFO enable and latch interrupt request */
     lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
     ctrlReg5.fifo_en = 1;                   // Enable FIFO
@@ -113,6 +103,10 @@ int16_t Lis2dh12::init() {
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
     error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
+    if (error) return error;
+
+    error = setOperatingMode(samplRate, HIGH_RES_12bit, fullScale);
+
     return error;
 }
 
@@ -120,7 +114,6 @@ int16_t Lis2dh12::enableSensor() {
     /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     ctrlReg1.odr = samplRate;               // Set sampling rate
-    ctrlReg1.lpen = NORMAL_10bit;           // Set normal mode (10 bit resolution) or low power mode (8 bit resolution)
     ctrlReg1.xen = 1;                       // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
@@ -130,6 +123,31 @@ int16_t Lis2dh12::enableSensor() {
 int16_t Lis2dh12::disableSensor() {
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};    // Disable all axes and set sampling rate to 0, SPI stays active
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+}
+
+int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _samplRate, resolution_mode_t res, lis2dh12_fs_t _fullScale) {
+    int16_t error;
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
+    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
+
+    /* ODR, Low Power enable, Axes enable */
+    ctrlReg1.odr = _samplRate;              // Set sampling rate
+    ctrlReg1.lpen = (res == LOW_POWER_8bit) ? 1 : 0;    // set power mode
+    ctrlReg1.xen = 1;                       // Enable all axes
+    ctrlReg1.yen = 1;
+    ctrlReg1.zen = 1;
+    error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+    if (error) return error;
+
+
+    /* Block Data Update, Big/Little Endian data selection,
+     * Full-scale selection, Operating mode selection, Self-test enable,
+     * SPI serial interface mode selection */
+    ctrlReg4.bdu = 1;                       // Enable Block Data Update
+    ctrlReg4.fs = _fullScale;               // Set full scale
+    ctrlReg4.hr = (res == HIGH_RES_12bit) ? 1 : 0;    // set resolution
+    error = writeReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
+    return error;
 }
 
 int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs) {
@@ -205,33 +223,24 @@ int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
 
 int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
     int16_t error = 0;
-    lis2dh12_int1_ths_t int1Ths;
-    lis2dh12_ctrl_reg4_t ctrl_reg4;
-
-    error = readReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrl_reg4, 1);
-    if (error)
-        return error;
+    lis2dh12_int1_ths_t int1Ths = {};
 
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
-    switch (ctrl_reg4.fs) {
+    switch (fullScale) {
         case LIS2DH12_2g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
-            EDEBUG_PRINTF("Full Scale: 2 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 4);
             break;
         case LIS2DH12_4g:
             int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
-            EDEBUG_PRINTF("Full Scale: 4 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 5);
             break;
         case LIS2DH12_8g:
             int1Ths.ths = (uint8_t) (userThresholdInMg / 62);
-            EDEBUG_PRINTF("Full Scale: 8 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths * 62);
             break;
         case LIS2DH12_16g:
             int1Ths.ths = (uint8_t) (userThresholdInMg / 186);
-            EDEBUG_PRINTF("Full Scale: 16 g\r\n");
             EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths * 186);
             break;
         default:
