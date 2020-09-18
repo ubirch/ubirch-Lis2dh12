@@ -43,7 +43,7 @@ int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
     return i2c->write(i2cAddr & 0xFE, dataToSend, len + 1);
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _resolution) :
+Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _resolution) :
     i2c(_i2c),
     i2cAddr(LIS2DH12_I2C_ADD_H),
     sampRate(_sampRate),
@@ -114,7 +114,7 @@ int16_t Lis2dh12::enableSensor() {
     /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     ctrlReg1.odr = sampRate;               // Set sampling rate
-    ctrlReg1.lpen = (resolution == LOW_POWER_8bit) ? 1 : 0;    // set power mode
+    ctrlReg1.lpen = (resolution == LIS2DH12_LP_8bit) ? 1 : 0;    // set power mode
     ctrlReg1.xen = 1;                       // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
@@ -126,7 +126,7 @@ int16_t Lis2dh12::disableSensor() {
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
 }
 
-int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _res) {
+int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
     int16_t error;
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
@@ -145,7 +145,7 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _full
 
     /* ODR, Low Power enable, Axes enable */
     ctrlReg1.odr = sampRate;              // Set sampling rate
-    ctrlReg1.lpen = (resolution == LOW_POWER_8bit) ? 1 : 0;    // set power mode
+    ctrlReg1.lpen = (resolution == LIS2DH12_LP_8bit) ? 1 : 0;    // set power mode
     ctrlReg1.xen = 1;                     // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
@@ -158,7 +158,7 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _full
      * SPI serial interface mode selection */
     ctrlReg4.bdu = 1;                      // Enable Block Data Update
     ctrlReg4.fs = fullScale;               // Set full scale
-    ctrlReg4.hr = (_res == HIGH_RES_12bit) ? 1 : 0;    // set resolution
+    ctrlReg4.hr = (_res == LIS2DH12_HR_12bit) ? 1 : 0;    // set resolution
     error = writeReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     return error;
 }
@@ -603,13 +603,13 @@ uint8_t Lis2dh12::fullScaleToInt(lis2dh12_fs_t fs) {
     }
 }
 
-uint8_t Lis2dh12::resolutionToInt(resolution_mode_t r) {
+uint8_t Lis2dh12::resolutionToInt(lis2dh12_op_md_t r) {
     switch (r) {
-        case LOW_POWER_8bit:
+        case LIS2DH12_LP_8bit:
             return 8;
-        case NORMAL_10bit:
+        case LIS2DH12_NM_10bit:
             return 10;
-        case HIGH_RES_12bit:
+        case LIS2DH12_HR_12bit:
             return 12;
         default:
             return 0;

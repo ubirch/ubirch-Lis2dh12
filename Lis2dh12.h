@@ -37,17 +37,10 @@ typedef struct {
     int16_t z_axis;
 }acceleration_t;
 
-typedef enum
-{
-    LOW_POWER_8bit = 0,
-    NORMAL_10bit = 1,
-    HIGH_RES_12bit = 2,
-} resolution_mode_t;
-
 class Lis2dh12
 {
 public:
-    Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _resolution);
+    Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _resolution);
 
     virtual ~Lis2dh12();
 
@@ -55,7 +48,7 @@ public:
 
     int16_t selfTest();
 
-    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _res);
+    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
 
     int16_t enableSensor();
 
@@ -103,13 +96,13 @@ private:
 
     static uint8_t fullScaleToInt(lis2dh12_fs_t fs);
 
-    static uint8_t resolutionToInt(resolution_mode_t r);
+    static uint8_t resolutionToInt(lis2dh12_op_md_t r);
 
     I2C *i2c;
     uint8_t i2cAddr;
     lis2dh12_odr_t sampRate;
     lis2dh12_fs_t fullScale;
-    resolution_mode_t resolution;
+    lis2dh12_op_md_t resolution;
     bool waitingForThresholdInterrupt;
 };
 
