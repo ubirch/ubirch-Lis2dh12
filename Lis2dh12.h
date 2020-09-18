@@ -56,11 +56,13 @@ public:
 
     int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
-    int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
+    int16_t enableDoubleClickInterrupt();
 
     int16_t enableFIFOOverflowInterrupt();
 
     int16_t disableFIFOOverflowInterrupt();
+
+    int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
 
     int16_t resetInterrupt();
 

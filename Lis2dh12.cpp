@@ -163,6 +163,50 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _full
     return error;
 }
 
+int16_t Lis2dh12::enableDoubleClickInterrupt() {
+    int16_t error = 0;
+
+    // todo configure double click interrupt
+
+    /* Interrupt 1 enable */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {};
+    ctrlReg3.i1_click = 1;      // generate double click interrupt on INT1 pin
+    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
+    /* clear interrupt register */
+    uint8_t data;
+    return readReg(LIS2DH12_INT1_SRC, &data, 1);
+}
+
+int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
+    int16_t error = 0;
+
+    /* Interrupt 1 enable */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {};
+//    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1); fixme
+//    if (error) return error;
+    ctrlReg3.i1_overrun = 1;                    // generate FIFO overrun interrupt on INT1 pin
+    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
+    /* clear interrupt register */
+    uint8_t data;
+    return readReg(LIS2DH12_INT1_SRC, &data, 1);
+}
+
+int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
+    int16_t error = 0;
+
+    /* Interrupt 1 disable */
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
+    ctrlReg3.i1_overrun = 0;
+    return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+}
+
 int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs) {
     int16_t error = 0;
 
@@ -200,35 +244,6 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     waitingForThresholdInterrupt = true;
 
     return error;
-}
-
-int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
-    int16_t error = 0;
-
-    /* clear interrupt register */
-    uint8_t data;
-    error = readReg(LIS2DH12_INT1_SRC, &data, 1);
-    if (error)
-        return error;
-
-    /* Interrupt 1 enable */
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
-    ctrlReg3.i1_overrun = 1;                    // generate FIFO overrun interrupt on INT1 pin
-    return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-}
-
-int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
-    int16_t error = 0;
-
-    /* Interrupt 1 disable */
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
-
-    ctrlReg3.i1_overrun = 0;
-    return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
 }
 
 int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
