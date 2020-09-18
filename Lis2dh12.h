@@ -47,28 +47,35 @@ typedef enum
 class Lis2dh12
 {
 public:
-    Lis2dh12(I2C *_i2c, lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale);
+    Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _resolution);
 
     virtual ~Lis2dh12();
 
     int16_t init();
+
+    int16_t selfTest();
+
+    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _res);
+
+    int16_t enableSensor();
+
+    int16_t disableSensor();
 
     int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
     int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
 
     int16_t enableFIFOOverflowInterrupt();
+
     int16_t disableFIFOOverflowInterrupt();
 
     int16_t resetInterrupt();
 
-    int16_t enableSensor();
-
-    int16_t disableSensor();
-
-    int16_t selfTest();
-
 private:
+
+    int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+
+    int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
     int16_t setDuration(uint16_t userDurationInMs);
 
@@ -92,17 +99,18 @@ private:
 
     void readAllRegisters(void);
 
+    static uint16_t sampRateToInt(lis2dh12_odr_t sr);
+
+    static uint8_t fullScaleToInt(lis2dh12_fs_t fs);
+
+    static uint8_t resolutionToInt(resolution_mode_t r);
+
     I2C *i2c;
     uint8_t i2cAddr;
-
-    int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
-    int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
-
-    lis2dh12_odr_t samplRate;
+    lis2dh12_odr_t sampRate;
     lis2dh12_fs_t fullScale;
+    resolution_mode_t resolution;
     bool waitingForThresholdInterrupt;
-    int16_t setOperatingMode(resolution_mode_t res, lis2dh12_odr_t _samplRate);
-    int16_t setOperatingMode(lis2dh12_odr_t _samplRate, resolution_mode_t res, lis2dh12_fs_t _fullScale);
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H

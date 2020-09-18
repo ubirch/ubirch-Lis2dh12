@@ -43,11 +43,12 @@ int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
     return i2c->write(i2cAddr & 0xFE, dataToSend, len + 1);
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _samplRate, lis2dh12_fs_t _fullScale) :
+Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _resolution) :
     i2c(_i2c),
     i2cAddr(LIS2DH12_I2C_ADD_H),
-    samplRate(_samplRate),
-    fullScale(_fullScale) {
+    sampRate(_sampRate),
+    fullScale(_fullScale),
+    resolution(_resolution) {
     waitingForThresholdInterrupt = false;
     i2c->frequency(100000);
 }
@@ -105,15 +106,15 @@ int16_t Lis2dh12::init() {
     error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     if (error) return error;
 
-    error = setOperatingMode(samplRate, HIGH_RES_12bit, fullScale);
-
+    error = setOperatingMode(sampRate, fullScale, resolution);
     return error;
 }
 
 int16_t Lis2dh12::enableSensor() {
     /* ODR, LPen, Axes enable */
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
-    ctrlReg1.odr = samplRate;               // Set sampling rate
+    ctrlReg1.odr = sampRate;               // Set sampling rate
+    ctrlReg1.lpen = (resolution == LOW_POWER_8bit) ? 1 : 0;    // set power mode
     ctrlReg1.xen = 1;                       // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
@@ -125,15 +126,27 @@ int16_t Lis2dh12::disableSensor() {
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
 }
 
-int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _samplRate, resolution_mode_t res, lis2dh12_fs_t _fullScale) {
+int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, resolution_mode_t _res) {
     int16_t error;
     lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
     lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
 
+    sampRate = _sampRate;
+    fullScale = _fullScale;
+    resolution = _res;
+
+    EDEBUG_PRINTF("Setting operating mode:\r\n"
+                  "  - samp. rate: %3d Hz\r\n"
+                  "  - full scale: %3d G\r\n"
+                  "  - resolution: %3d bit\r\n",
+                  sampRateToInt(sampRate),
+                  fullScaleToInt(fullScale),
+                  resolutionToInt(resolution));
+
     /* ODR, Low Power enable, Axes enable */
-    ctrlReg1.odr = _samplRate;              // Set sampling rate
-    ctrlReg1.lpen = (res == LOW_POWER_8bit) ? 1 : 0;    // set power mode
-    ctrlReg1.xen = 1;                       // Enable all axes
+    ctrlReg1.odr = sampRate;              // Set sampling rate
+    ctrlReg1.lpen = (resolution == LOW_POWER_8bit) ? 1 : 0;    // set power mode
+    ctrlReg1.xen = 1;                     // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
     error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
@@ -143,9 +156,9 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _samplRate, resolution_mode_t 
     /* Block Data Update, Big/Little Endian data selection,
      * Full-scale selection, Operating mode selection, Self-test enable,
      * SPI serial interface mode selection */
-    ctrlReg4.bdu = 1;                       // Enable Block Data Update
-    ctrlReg4.fs = _fullScale;               // Set full scale
-    ctrlReg4.hr = (res == HIGH_RES_12bit) ? 1 : 0;    // set resolution
+    ctrlReg4.bdu = 1;                      // Enable Block Data Update
+    ctrlReg4.fs = fullScale;               // Set full scale
+    ctrlReg4.hr = (_res == HIGH_RES_12bit) ? 1 : 0;    // set resolution
     error = writeReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     return error;
 }
@@ -170,7 +183,6 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     lis2dh12_int1_cfg_t int1Cfg;
     error = readReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
-
     int1Cfg.xhie = 1;                       // enable high event interrupts on Int1 pin for all axes
     int1Cfg.yhie = 1;                       // (if acc > threshold for t > duration)
     int1Cfg.zhie = 1;
@@ -181,7 +193,6 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     lis2dh12_ctrl_reg3_t ctrlReg3;
     error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
-
     ctrlReg3.i1_ia1 = 1;                    // generate interrupt for interrupt activity on INT1 and set flag
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
@@ -204,7 +215,6 @@ int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
     lis2dh12_ctrl_reg3_t ctrlReg3;
     error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
-
     ctrlReg3.i1_overrun = 1;                    // generate FIFO overrun interrupt on INT1 pin
     return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
 }
@@ -254,41 +264,34 @@ int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
 int16_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
     lis2dh12_int1_duration_t int1Dur = {0};
 
-    switch (samplRate) {
+    switch (sampRate) {
         case LIS2DH12_ODR_1Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 1000);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 1000);
-            EDEBUG_PRINTF("Sampling Rate: 1 Hz\r\n");
             break;
         case LIS2DH12_ODR_10Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 100);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 100);
-            EDEBUG_PRINTF("Sampling Rate: 10 Hz\r\n");
             break;
         case LIS2DH12_ODR_25Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 40);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 40);
-            EDEBUG_PRINTF("Sampling Rate: 25 Hz\r\n");
             break;
         case LIS2DH12_ODR_50Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 20);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 20);
-            EDEBUG_PRINTF("Sampling Rate: 50 Hz\r\n");
             break;
         case LIS2DH12_ODR_100Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 10);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 10);
-            EDEBUG_PRINTF("Sampling Rate: 100 Hz\r\n");
             break;
         case LIS2DH12_ODR_200Hz:
             int1Dur.d = (uint8_t) (userDurationInMs / 5);
             EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 5);
-            EDEBUG_PRINTF("Sampling Rate: 200 Hz\r\n");
             break;
         case LIS2DH12_ODR_400Hz:
             int1Dur.d = (uint8_t) ((userDurationInMs << 1) / 5);
             EDEBUG_PRINTF("Duration: %d ms\r\n", (int1Dur.d * 5) >> 1);
-            EDEBUG_PRINTF("Sampling Rate: 400 Hz\r\n");
             break;
         default:
             EDEBUG_PRINTF("ERROR setting duration. Undefined sampling rate.\r\n");
@@ -413,10 +416,10 @@ int16_t Lis2dh12::selfTest() {
     if ((minST <= absDif.x_axis) && (absDif.x_axis <= maxST)
         && (minST <= absDif.y_axis) && (absDif.y_axis <= maxST)
         && (minST <= absDif.z_axis) && (absDif.z_axis <= maxST)) {
-        EDEBUG_PRINTF("SELF TEST PASSED\r\n");
+        EDEBUG_PRINTF("Sensor self test passed\r\n");
         return 0;
     } else {
-        EDEBUG_PRINTF(" - - - SELF TEST FAILED - - - \r\n");
+        EDEBUG_PRINTF(" - - - SENSOR SELF TEST FAILED! - - - \r\n");
         return 0xffff;
     }
 }
@@ -561,3 +564,55 @@ void Lis2dh12::readAllRegisters(void) {
     }
     EDEBUG_PRINTF("---------------\r\n");
 }
+
+uint16_t Lis2dh12::sampRateToInt(lis2dh12_odr_t sr) {
+    switch (sr) {
+        case LIS2DH12_POWER_DOWN:
+            return 0;
+        case LIS2DH12_ODR_1Hz:
+            return 1;
+        case LIS2DH12_ODR_10Hz:
+            return 10;
+        case LIS2DH12_ODR_25Hz:
+            return 25;
+        case LIS2DH12_ODR_50Hz:
+            return 50;
+        case LIS2DH12_ODR_100Hz:
+            return 100;
+        case LIS2DH12_ODR_200Hz:
+            return 200;
+        case LIS2DH12_ODR_400Hz:
+            return 400;
+        default:
+            return 0;
+    }
+}
+
+uint8_t Lis2dh12::fullScaleToInt(lis2dh12_fs_t fs) {
+    switch (fs) {
+        case LIS2DH12_2g:
+            return 2;
+        case LIS2DH12_4g:
+            return 4;
+        case LIS2DH12_8g:
+            return 8;
+        case LIS2DH12_16g:
+            return 16;
+        default:
+            return 0;
+    }
+}
+
+uint8_t Lis2dh12::resolutionToInt(resolution_mode_t r) {
+    switch (r) {
+        case LOW_POWER_8bit:
+            return 8;
+        case NORMAL_10bit:
+            return 10;
+        case HIGH_RES_12bit:
+            return 12;
+        default:
+            return 0;
+    }
+}
+
