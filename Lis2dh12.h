@@ -105,6 +105,7 @@ private:
     lis2dh12_fs_t fullScale;
     lis2dh12_op_md_t resolution;
     bool waitingForThresholdInterrupt;
+    int16_t enableFIFO();
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
