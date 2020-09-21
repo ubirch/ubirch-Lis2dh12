@@ -66,6 +66,7 @@ public:
 
     int16_t resetInterrupt();
 
+    void readAllRegisters(void);
 private:
 
     int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
@@ -91,8 +92,6 @@ private:
     int16_t waitForThresholdInt();
 
     bool isWaitingForThresholdInterrupt();
-
-    void readAllRegisters(void);
 
     static uint16_t sampRateToInt(lis2dh12_odr_t sr);
 
