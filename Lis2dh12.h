@@ -77,9 +77,9 @@ private:
 
     int16_t enableFIFO();
 
-    int16_t setDuration(uint16_t userDurationInMs);
+    int16_t setDurMs(uint16_t userDurationInMs);
 
-    uint8_t getValueForThsReg(uint16_t userThresholdInMg);
+    uint8_t setThsMg(uint16_t userThresholdInMg);
 
     int16_t getAcceleration(acceleration_t &acceleration);
 

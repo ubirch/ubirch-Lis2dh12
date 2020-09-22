@@ -87,11 +87,6 @@ int16_t Lis2dh12::init() {
     error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
     if (error) return error;
 
-    /* Interrupt 1 Configuration */
-    lis2dh12_int1_cfg_t int1Cfg = {0};    // do not enable any interrupts yet
-    error = writeReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
-    if (error) return error;
-
     error = resetDoubleClickInterrupt();
     if (error) return error;
 
@@ -212,25 +207,25 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     /* set double click interrupt threshold and latch interrupt */
     lis2dh12_click_ths_t clickThs = {};
     clickThs.lir_click = 1;
-    clickThs.ths = getValueForThsReg(250);
+    clickThs.ths = setThsMg(1000);
     error = writeReg(LIS2DH12_CLICK_THS, (uint8_t *) &clickThs, 1);
     if (error) return error;
 
     /* set time limit */
     lis2dh12_time_limit_t timeLimit = {};
-    timeLimit.tli = 0x33;
+    timeLimit.tli = setDurMs(128);
     error = writeReg(LIS2DH12_TIME_LIMIT, (uint8_t *) &timeLimit, 1);
     if (error) return error;
 
     /* set time latency */
     lis2dh12_time_latency_t timeLatency = {};
-    timeLatency.tla = 0x15;
+    timeLatency.tla = setDurMs(53);
     error = writeReg(LIS2DH12_TIME_LATENCY, (uint8_t *) &timeLatency, 1);
     if (error) return error;
 
     /* set time window */
     lis2dh12_time_window_t timeWindow = {};
-    timeWindow.tw = 0xff;
+    timeWindow.tw = setDurMs(638);
     error = writeReg(LIS2DH12_TIME_WINDOW, (uint8_t *) &timeWindow, 1);
     if (error) return error;
 
@@ -323,28 +318,19 @@ int16_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
 }
 
 int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
-    uint8_t alignShift = 0;
-    uint8_t sensitivity = 0;
-
-    switch (resolution) {
-        case LIS2DH12_LP_8bit:
-            alignShift = 8;
-            sensitivity = 16 << fullScale;
-            break;
-        case LIS2DH12_NM_10bit:
-            alignShift = 6;
-            sensitivity = 4 << fullScale;
-            break;
-        case LIS2DH12_HR_12bit:
-            alignShift = 4;
-            sensitivity = 1 << fullScale;
-            break;
+    switch (fullScale) {
+        case LIS2DH12_2g:
+            return (rawData >> 4);
+        case LIS2DH12_4g:
+            return (rawData >> 3);
+        case LIS2DH12_8g:
+            return (rawData >> 2);
+        case LIS2DH12_16g:
+            return ((rawData * 3) >> 2);
         default:
-            EDEBUG_PRINTF("ERROR converting raw acceleration data: undefined resolution\r\n");
+            EDEBUG_PRINTF("ERROR converting raw acceleration data: undefined full-scale\r\n");
             return 0xffff;
     }
-
-    return (rawData >> alignShift) * sensitivity;
 }
 
 int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs) {
@@ -356,16 +342,18 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
 
     /* Set threshold in mg */
     lis2dh12_int1_ths_t int1Ths = {};
-    int1Ths.ths = getValueForThsReg(thresholdInMg);
+    int1Ths.ths = setThsMg(thresholdInMg);
     error = writeReg(LIS2DH12_INT1_THS, (uint8_t *) &int1Ths, 1);
     if (error) return error;
 
     /* Set duration in ms */
-    error = setDuration(durationInMs);
+    lis2dh12_int1_duration_t int1Dur = {0};
+    int1Dur.d = setDurMs(durationInMs);
+    error = writeReg(LIS2DH12_INT1_DURATION, (uint8_t *) &int1Dur, 1);
     if (error) return error;
 
     /* Interrupt 1 Configuration */
-    lis2dh12_int1_cfg_t int1Cfg;
+    lis2dh12_int1_cfg_t int1Cfg = {};
     error = readReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
     int1Cfg.xhie = 1;                       // enable high event interrupts on Int1 pin for all axes
@@ -385,8 +373,8 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     return error;
 }
 
-uint8_t Lis2dh12::getValueForThsReg(uint16_t userThresholdInMg) {
-    uint8_t ths = 0;
+uint8_t Lis2dh12::setThsMg(uint16_t userThresholdInMg) {
+    uint8_t ths;
 
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
     switch (fullScale) {
@@ -408,48 +396,46 @@ uint8_t Lis2dh12::getValueForThsReg(uint16_t userThresholdInMg) {
             return ths;
         default:
             EDEBUG_PRINTF("ERROR setting threshold. Undefined full-scale.\r\n");
-            return 0xffff;
+            return 0xff;
     }
 }
 
-int16_t Lis2dh12::setDuration(uint16_t userDurationInMs) {
-    lis2dh12_int1_duration_t int1Dur = {0};
+int16_t Lis2dh12::setDurMs(uint16_t userDurationInMs) {
+    uint8_t d;
 
     switch (sampRate) {
         case LIS2DH12_ODR_1Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 1000);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 1000);
-            break;
+            d = (uint8_t) (userDurationInMs / 1000);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 1000);
+            return d;
         case LIS2DH12_ODR_10Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 100);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 100);
-            break;
+            d = (uint8_t) (userDurationInMs / 100);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 100);
+            return d;
         case LIS2DH12_ODR_25Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 40);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 40);
-            break;
+            d = (uint8_t) (userDurationInMs / 40);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 40);
+            return d;
         case LIS2DH12_ODR_50Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 20);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 20);
-            break;
+            d = (uint8_t) (userDurationInMs / 20);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 20);
+            return d;
         case LIS2DH12_ODR_100Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 10);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 10);
-            break;
+            d = (uint8_t) (userDurationInMs / 10);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 10);
+            return d;
         case LIS2DH12_ODR_200Hz:
-            int1Dur.d = (uint8_t) (userDurationInMs / 5);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", int1Dur.d * 5);
-            break;
+            d = (uint8_t) (userDurationInMs / 5);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 5);
+            return d;
         case LIS2DH12_ODR_400Hz:
-            int1Dur.d = (uint8_t) ((userDurationInMs << 1) / 5);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", (int1Dur.d * 5) >> 1);
-            break;
+            d = (uint8_t) ((userDurationInMs << 1) / 5);
+            EDEBUG_PRINTF("Duration: %d ms\r\n", (d * 5) >> 1);
+            return d;
         default:
             EDEBUG_PRINTF("ERROR setting duration. Undefined sampling rate.\r\n");
-            return 0xffff;
+            return 0xff;
     }
-
-    return writeReg(LIS2DH12_INT1_DURATION, (uint8_t *) &int1Dur, 1);
 }
 
 int16_t Lis2dh12::selfTest() {
