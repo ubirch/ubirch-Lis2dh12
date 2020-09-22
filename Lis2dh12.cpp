@@ -49,7 +49,6 @@ Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale
     sampRate(_sampRate),
     fullScale(_fullScale),
     resolution(_resolution) {
-    waitingForThresholdInterrupt = false;
     i2c->frequency(100000);
 }
 
@@ -93,27 +92,37 @@ int16_t Lis2dh12::init() {
     error = writeReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
     if (error) return error;
 
+    error = resetDoubleClickInterrupt();
+    if (error) return error;
+
+    error = resetInterrupt();
+    if (error) return error;
+
     error = setOperatingMode(sampRate, fullScale, resolution);
     if (error) return error;
 
-    enableFIFO();
+    error = enableFIFO();
     return error;
 }
 
 int16_t Lis2dh12::enableSensor() {
-    /* ODR, LPen, Axes enable */
-    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
-    ctrlReg1.odr = sampRate;               // Set sampling rate
-    ctrlReg1.lpen = (resolution == LIS2DH12_LP_8bit) ? 1 : 0;    // set power mode
-    ctrlReg1.xen = 1;                       // Enable all axes
-    ctrlReg1.yen = 1;
-    ctrlReg1.zen = 1;
+    int16_t error = 0;
+    lis2dh12_ctrl_reg1_t ctrlReg1;
+    error = readReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+    if (error) return error;
+
+    ctrlReg1.odr = sampRate;    // Set sampling rate
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn on sensor
 }
 
 int16_t Lis2dh12::disableSensor() {
-    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};    // Disable all axes and set sampling rate to 0, SPI stays active
-    return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+    int16_t error = 0;
+    lis2dh12_ctrl_reg1_t ctrlReg1;
+    error = readReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
+    if (error) return error;
+
+    ctrlReg1.odr = 0;   // Set sampling rate
+    return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn off sensor
 }
 
 int16_t Lis2dh12::enableFIFO() {
@@ -135,8 +144,6 @@ int16_t Lis2dh12::enableFIFO() {
 
 int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
     int16_t error = 0;
-    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
-    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
 
     sampRate = _sampRate;
     fullScale = _fullScale;
@@ -153,42 +160,30 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _full
     /* Block Data Update, Big/Little Endian data selection,
      * Full-scale selection, Operating mode selection, Self-test enable,
      * SPI serial interface mode selection */
+    lis2dh12_ctrl_reg4_t ctrlReg4 = {0};
     ctrlReg4.bdu = 1;                      // Enable Block Data Update
     ctrlReg4.fs = fullScale;               // Set full scale
     ctrlReg4.hr = (_res == LIS2DH12_HR_12bit) ? 1 : 0;    // set resolution
     error = writeReg(LIS2DH12_CTRL_REG4, (uint8_t *) &ctrlReg4, 1);
     if (error) return error;
 
-    /* By design, when the device from high-resolution configuration (HR) is set to power-down mode (PD),
-     * it is recommended to read register REFERENCE (26h) for a complete reset of the filtering block
-     * before switching to normal/high-performance mode again for proper device functionality. */
+    /* reset filtering block */
     uint8_t buf;
     error = readReg(LIS2DH12_REFERENCE, &buf, 1);
     if (error) return error;
 
     /* ODR, Low Power enable, Axes enable */
-    ctrlReg1.odr = sampRate;              // Set sampling rate
-    ctrlReg1.lpen = (resolution == LIS2DH12_LP_8bit) ? 1 : 0;    // set power mode
-    ctrlReg1.xen = 1;                     // Enable all axes
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {0};
+    ctrlReg1.odr = sampRate;    // Set sampling rate
+    ctrlReg1.lpen = (resolution == LIS2DH12_LP_8bit) ? 1 : 0;   // set power mode
+    ctrlReg1.xen = 1;   // Enable all axes
     ctrlReg1.yen = 1;
     ctrlReg1.zen = 1;
     error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
     if (error) return error;
 
-    wait_ms(700);   // wait duration of turn-on time
-
-    ctrlReg1.odr = 0;   // turn off
-    error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
-    if (error) return error;
-
-    error = readReg(LIS2DH12_REFERENCE, &buf, 1);   // reset filtering block
-    if (error) return error;
-
-    ctrlReg1.odr = sampRate;              // Set sampling rate
-    error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
-    if (error) return error;
-
-    wait_ms(700);   // wait duration of turn-on time
+    /* wait duration of turn-on time (7/odr) */
+    wait(float(7) / float(sampRateToInt(sampRate)));
 
     return error;
 }
@@ -196,19 +191,65 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _full
 int16_t Lis2dh12::enableDoubleClickInterrupt() {
     int16_t error = 0;
 
-    // todo configure double click interrupt
+    /* configure high pass filter */
+    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+    ctrlReg2.hpm = 0;       // filter mode: normal
+    ctrlReg2.hpcf = 0b11;   // cutoff frequency: 1Hz @400Hz
+    ctrlReg2.fds =
+        0;       // filtered data selection: 0: internal filter bypassed; 1: data from internal filter sent to output register and FIFO
+    ctrlReg2.hp = 0b100;    // HPCLICK + HP_IA2 + HP_IA1 -> HP
+    error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
+    if (error) return error;
+
+    /* configure double click interrupt */
+    lis2dh12_click_cfg_t clickCfg = {};
+    clickCfg.zd = 1;
+    clickCfg.yd = 1;
+    clickCfg.xd = 1;
+    error = writeReg(LIS2DH12_CLICK_CFG, (uint8_t *) &clickCfg, 1);
+    if (error) return error;
+
+    /* set double click interrupt threshold and latch interrupt */
+    lis2dh12_click_ths_t clickThs = {};
+    clickThs.lir_click = 1;
+    clickThs.ths = getValueForThsReg(250);
+    error = writeReg(LIS2DH12_CLICK_THS, (uint8_t *) &clickThs, 1);
+    if (error) return error;
+
+    /* set time limit */
+    lis2dh12_time_limit_t timeLimit = {};
+    timeLimit.tli = 0x33;
+    error = writeReg(LIS2DH12_TIME_LIMIT, (uint8_t *) &timeLimit, 1);
+    if (error) return error;
+
+    /* set time latency */
+    lis2dh12_time_latency_t timeLatency = {};
+    timeLatency.tla = 0x15;
+    error = writeReg(LIS2DH12_TIME_LATENCY, (uint8_t *) &timeLatency, 1);
+    if (error) return error;
+
+    /* set time window */
+    lis2dh12_time_window_t timeWindow = {};
+    timeWindow.tw = 0xff;
+    error = writeReg(LIS2DH12_TIME_WINDOW, (uint8_t *) &timeWindow, 1);
+    if (error) return error;
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {};
-//    ctrlReg3.i1_click = 1;      // generate double click interrupt on INT1 pin
+    ctrlReg3.i1_click = 1;      // generate double click interrupt on INT1 pin
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
 
-//    EDEBUG_PRINTF("\r\nwaiting for double click\r\n");
+    EDEBUG_PRINTF("\r\nwaiting for double click\r\n");
 
     /* clear interrupt register */
     uint8_t data;
     return readReg(LIS2DH12_INT1_SRC, &data, 1);
+}
+
+int16_t Lis2dh12::resetDoubleClickInterrupt() {
+    lis2dh12_click_src_t clickSrc;
+    return readReg(LIS2DH12_CLICK_SRC, (uint8_t *) &clickSrc, 1);
 }
 
 int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
@@ -231,12 +272,18 @@ int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
     int16_t error = 0;
 
     /* Interrupt 1 disable */
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {};
+//    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1); fixme
+//    if (error) return error;
 
     ctrlReg3.i1_overrun = 0;
     return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+}
+
+/* reset latched interrupt */
+int16_t Lis2dh12::resetInterrupt() {
+    lis2dh12_int1_src_t int1Src;
+    return readReg(LIS2DH12_INT1_SRC, (uint8_t *) &int1Src, 1);
 }
 
 int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool debug = false) {
@@ -300,94 +347,18 @@ int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
     return (rawData >> alignShift) * sensitivity;
 }
 
-/* reset latched threshold interrupt */
-int16_t Lis2dh12::resetInterrupt() {
-    lis2dh12_int1_src_t int1Src;
-
-    return readReg(LIS2DH12_INT1_SRC, (uint8_t *) &int1Src, 1);
-}
-
-/* reset latched threshold interrupt and check cause */
-int16_t Lis2dh12::resetInterrupt(bool *_xyzHighEvent) {
-    int16_t error = 0;
-    lis2dh12_int1_src_t int1Src;
-
-    error = readReg(LIS2DH12_INT1_SRC, (uint8_t *) &int1Src, 1);
-
-    if (!error) *_xyzHighEvent = int1Src.ia;
-
-    return error;
-}
-
-int16_t Lis2dh12::checkFifoStatus(bool *_overrun) {
-    int16_t error = 0;
-    lis2dh12_fifo_src_reg_t fifoSrcReg;
-
-    error = readReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifoSrcReg, 1);
-
-    if (!error)
-        *_overrun = fifoSrcReg.ovrn_fifo;
-
-    return error;
-}
-
-/* activate fifo overrun interrupt and deactivate threshold interrupt */
-int16_t Lis2dh12::waitForOverrunInt() {
-    int16_t error = 0;
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
-
-    ctrlReg3.i1_overrun = 1;
-    ctrlReg3.i1_ia1 = 0;
-    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (!error) waitingForThresholdInterrupt = false;
-//    EDEBUG_PRINTF("waiting for overrun interrupt...\r\n");
-    return error;
-}
-
-/* deactivate fifo overrun interrupt and activates activity interrupt */
-int16_t Lis2dh12::waitForThresholdInt() {
-    int16_t error = 0;
-    lis2dh12_ctrl_reg3_t ctrlReg3;
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
-
-    ctrlReg3.i1_overrun = 0;
-    ctrlReg3.i1_ia1 = 1;
-    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (!error) waitingForThresholdInterrupt = true;
-//    EDEBUG_PRINTF("waiting for threshold interrupt...\r\n");
-    return error;
-}
-
-bool Lis2dh12::isWaitingForThresholdInterrupt() {
-    return waitingForThresholdInterrupt;
-}
-
-int16_t Lis2dh12::checkFifoDataLevel() {
-    int16_t error = 0;
-    lis2dh12_fifo_src_reg_t fifoSrcReg;
-
-    error = readReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *) &fifoSrcReg, 1);
-    if (error)
-        return error;
-
-    EDEBUG_PRINTF("%d unread values in FIFO\r\n", fifoSrcReg.fss);
-    return error;
-}
-
 int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs) {
     int16_t error = 0;
 
-    /* clear interrupts first */
+    /* clear interrupts */
     uint8_t data;
     readReg(LIS2DH12_INT1_SRC, &data, 1);
 
     /* Set threshold in mg */
-    error = setThreshold(thresholdInMg);
-    if (error)
-        return error;
+    lis2dh12_int1_ths_t int1Ths = {};
+    int1Ths.ths = getValueForThsReg(thresholdInMg);
+    error = writeReg(LIS2DH12_INT1_THS, (uint8_t *) &int1Ths, 1);
+    if (error) return error;
 
     /* Set duration in ms */
     error = setDuration(durationInMs);
@@ -411,39 +382,34 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
 
-    waitingForThresholdInterrupt = true;
-
     return error;
 }
 
-int16_t Lis2dh12::setThreshold(uint16_t userThresholdInMg) {
-    int16_t error = 0;
-    lis2dh12_int1_ths_t int1Ths = {};
+uint8_t Lis2dh12::getValueForThsReg(uint16_t userThresholdInMg) {
+    uint8_t ths = 0;
 
     /* LSb = 16mg@2g / 32mg@4g / 62mg@8g / 186mg@16g */
     switch (fullScale) {
         case LIS2DH12_2g:
-            int1Ths.ths = (uint8_t) (userThresholdInMg >> 4);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 4);
-            break;
+            ths = (uint8_t) (userThresholdInMg >> 4);
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths << 4);
+            return ths;
         case LIS2DH12_4g:
-            int1Ths.ths = (uint8_t) (userThresholdInMg >> 5);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths << 5);
-            break;
+            ths = (uint8_t) (userThresholdInMg >> 5);
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths << 5);
+            return ths;
         case LIS2DH12_8g:
-            int1Ths.ths = (uint8_t) (userThresholdInMg / 62);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths * 62);
-            break;
+            ths = (uint8_t) (userThresholdInMg / 62);
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths * 62);
+            return ths;
         case LIS2DH12_16g:
-            int1Ths.ths = (uint8_t) (userThresholdInMg / 186);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", int1Ths.ths * 186);
-            break;
+            ths = (uint8_t) (userThresholdInMg / 186);
+            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths * 186);
+            return ths;
         default:
             EDEBUG_PRINTF("ERROR setting threshold. Undefined full-scale.\r\n");
-            return error;
+            return 0xffff;
     }
-
-    return writeReg(LIS2DH12_INT1_THS, (uint8_t *) &int1Ths, 1);
 }
 
 int16_t Lis2dh12::setDuration(uint16_t userDurationInMs) {

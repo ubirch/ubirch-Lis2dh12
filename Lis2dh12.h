@@ -58,6 +58,8 @@ public:
 
     int16_t enableDoubleClickInterrupt();
 
+    int16_t resetDoubleClickInterrupt();
+
     int16_t enableFIFOOverflowInterrupt();
 
     int16_t disableFIFOOverflowInterrupt();
@@ -73,25 +75,15 @@ private:
 
     int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
+    int16_t enableFIFO();
+
     int16_t setDuration(uint16_t userDurationInMs);
 
-    int16_t setThreshold(uint16_t userThresholdInMg);
+    uint8_t getValueForThsReg(uint16_t userThresholdInMg);
 
     int16_t getAcceleration(acceleration_t &acceleration);
 
     int16_t convert_to_mg(int16_t rawData);
-
-    int16_t resetInterrupt(bool *_xyzHighEvent);
-
-    int16_t checkFifoStatus(bool *_overrun);
-
-    int16_t checkFifoDataLevel();
-
-    int16_t waitForOverrunInt();
-
-    int16_t waitForThresholdInt();
-
-    bool isWaitingForThresholdInterrupt();
 
     static uint16_t sampRateToInt(lis2dh12_odr_t sr);
 
@@ -104,8 +96,6 @@ private:
     lis2dh12_odr_t sampRate;
     lis2dh12_fs_t fullScale;
     lis2dh12_op_md_t resolution;
-    bool waitingForThresholdInterrupt;
-    int16_t enableFIFO();
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
