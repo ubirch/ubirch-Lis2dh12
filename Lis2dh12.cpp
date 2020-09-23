@@ -55,8 +55,10 @@ Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale
 Lis2dh12::~Lis2dh12() {
 }
 
-int16_t Lis2dh12::init() {
+int16_t Lis2dh12::init(bool filter_enable) {
     int16_t error = 0;
+
+    i2cAddr = filter_enable ? LIS2DH12_I2C_ADD_L : LIS2DH12_I2C_ADD_H;
 
     /*
      *  Check sensor ID
@@ -76,8 +78,11 @@ int16_t Lis2dh12::init() {
     error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn off sensor
     if (error) return error;
 
-    /* High-pass filter */
-    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
+    /* configure high pass filter */
+    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+    ctrlReg2.hpm = 0;                           // filter mode: normal
+    ctrlReg2.hpcf = 0b01;                       // cutoff frequency: 1Hz @400Hz
+    ctrlReg2.fds = filter_enable ? 1 : 0;       // filtered data selection
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
     if (error) return error;
 

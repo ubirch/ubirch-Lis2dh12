@@ -47,7 +47,7 @@ public:
 
     virtual ~Lis2dh12();
 
-    int16_t init();
+    int16_t init(bool filter_enable);
 
     int16_t selfTest();
 
