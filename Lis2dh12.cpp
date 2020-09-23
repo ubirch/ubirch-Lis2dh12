@@ -205,25 +205,29 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     if (error) return error;
 
     /* set double click interrupt threshold and latch interrupt */
+    EDEBUG_PRINTF("Double Click Threshold: ");
     lis2dh12_click_ths_t clickThs = {};
     clickThs.lir_click = 1;
-    clickThs.ths = setThsMg(1000);
+    clickThs.ths = setThsMg(DOUBLE_CLICK_THS);
     error = writeReg(LIS2DH12_CLICK_THS, (uint8_t *) &clickThs, 1);
     if (error) return error;
 
     /* set time limit */
+    EDEBUG_PRINTF("Time Limit: ");
     lis2dh12_time_limit_t timeLimit = {};
     timeLimit.tli = setDurMs(128);
     error = writeReg(LIS2DH12_TIME_LIMIT, (uint8_t *) &timeLimit, 1);
     if (error) return error;
 
     /* set time latency */
+    EDEBUG_PRINTF("Time Latency: ");
     lis2dh12_time_latency_t timeLatency = {};
     timeLatency.tla = setDurMs(53);
     error = writeReg(LIS2DH12_TIME_LATENCY, (uint8_t *) &timeLatency, 1);
     if (error) return error;
 
     /* set time window */
+    EDEBUG_PRINTF("Time Window: ");
     lis2dh12_time_window_t timeWindow = {};
     timeWindow.tw = setDurMs(638);
     error = writeReg(LIS2DH12_TIME_WINDOW, (uint8_t *) &timeWindow, 1);
@@ -380,22 +384,22 @@ uint8_t Lis2dh12::setThsMg(uint16_t userThresholdInMg) {
     switch (fullScale) {
         case LIS2DH12_2g:
             ths = (uint8_t) (userThresholdInMg >> 4);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths << 4);
+            EDEBUG_PRINTF("%d mg\r\n", ths << 4);
             return ths;
         case LIS2DH12_4g:
             ths = (uint8_t) (userThresholdInMg >> 5);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths << 5);
+            EDEBUG_PRINTF("%d mg\r\n", ths << 5);
             return ths;
         case LIS2DH12_8g:
             ths = (uint8_t) (userThresholdInMg / 62);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths * 62);
+            EDEBUG_PRINTF("%d mg\r\n", ths * 62);
             return ths;
         case LIS2DH12_16g:
             ths = (uint8_t) (userThresholdInMg / 186);
-            EDEBUG_PRINTF("Threshold: %d mg\r\n", ths * 186);
+            EDEBUG_PRINTF("%d mg\r\n", ths * 186);
             return ths;
         default:
-            EDEBUG_PRINTF("ERROR setting threshold. Undefined full-scale.\r\n");
+            EDEBUG_PRINTF("ERROR setting threshold: undefined full-scale\r\n");
             return 0xff;
     }
 }
@@ -406,34 +410,34 @@ int16_t Lis2dh12::setDurMs(uint16_t userDurationInMs) {
     switch (sampRate) {
         case LIS2DH12_ODR_1Hz:
             d = (uint8_t) (userDurationInMs / 1000);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 1000);
+            EDEBUG_PRINTF("%d ms\r\n", d * 1000);
             return d;
         case LIS2DH12_ODR_10Hz:
             d = (uint8_t) (userDurationInMs / 100);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 100);
+            EDEBUG_PRINTF("%d ms\r\n", d * 100);
             return d;
         case LIS2DH12_ODR_25Hz:
             d = (uint8_t) (userDurationInMs / 40);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 40);
+            EDEBUG_PRINTF("%d ms\r\n", d * 40);
             return d;
         case LIS2DH12_ODR_50Hz:
             d = (uint8_t) (userDurationInMs / 20);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 20);
+            EDEBUG_PRINTF("%d ms\r\n", d * 20);
             return d;
         case LIS2DH12_ODR_100Hz:
             d = (uint8_t) (userDurationInMs / 10);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 10);
+            EDEBUG_PRINTF("%d ms\r\n", d * 10);
             return d;
         case LIS2DH12_ODR_200Hz:
             d = (uint8_t) (userDurationInMs / 5);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", d * 5);
+            EDEBUG_PRINTF("%d ms\r\n", d * 5);
             return d;
         case LIS2DH12_ODR_400Hz:
             d = (uint8_t) ((userDurationInMs << 1) / 5);
-            EDEBUG_PRINTF("Duration: %d ms\r\n", (d * 5) >> 1);
+            EDEBUG_PRINTF("%d ms\r\n", (d * 5) >> 1);
             return d;
         default:
-            EDEBUG_PRINTF("ERROR setting duration. Undefined sampling rate.\r\n");
+            EDEBUG_PRINTF("ERROR setting duration: undefined sampling rate\r\n");
             return 0xff;
     }
 }

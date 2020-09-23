@@ -31,11 +31,14 @@
 #define ACC_ARRAYSIZE 32    // size of accelerometer FIFO
 #define TEST_ARRAYSIZE 5    // array for sensor self test
 
-typedef struct {
+#define DOUBLE_CLICK_THS 900    // threshold for double click detection in mg
+
+typedef struct
+{
     int16_t x_axis;
     int16_t y_axis;
     int16_t z_axis;
-}acceleration_t;
+} acceleration_t;
 
 class Lis2dh12
 {
