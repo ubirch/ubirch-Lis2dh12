@@ -110,12 +110,11 @@ int16_t Lis2dh12::init(bool filter_enable) {
 }
 
 int16_t Lis2dh12::enableSensor() {
-    int16_t error = 0;
-    lis2dh12_ctrl_reg1_t ctrlReg1;
-    error = readReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1);
-    if (error) return error;
-
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {};
     ctrlReg1.odr = sampRate;    // Set sampling rate
+    ctrlReg1.xen = 1;   // Enable all axes
+    ctrlReg1.yen = 1;
+    ctrlReg1.zen = 1;
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn on sensor
 }
 
@@ -295,16 +294,13 @@ int16_t Lis2dh12::resetInterrupt() {
 }
 
 int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool debug = false) {
-    if (debug) EDEBUG_PRINTF("      X   |   Y   |   Z   \r\n");
-
     int16_t error = 0;
     for (int i = 0; i < ACC_ARRAYSIZE; i++) {
         error = getAcceleration(accelerationArray[i]);
         if (error) return error;
 
         if (debug)
-            EDEBUG_PRINTF("%02d: %5d | %5d | %5d \r\n",
-                          i,
+            EDEBUG_PRINTF("%d,%d,%d\r\n",
                           accelerationArray[i].x_axis,
                           accelerationArray[i].y_axis,
                           accelerationArray[i].z_axis);
