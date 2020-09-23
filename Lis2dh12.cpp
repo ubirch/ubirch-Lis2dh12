@@ -72,6 +72,10 @@ int16_t Lis2dh12::init() {
         EDEBUG_PRINTF("Sensor ID check OK\r\n");
     }
 
+    lis2dh12_ctrl_reg1_t ctrlReg1 = {};
+    error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn off sensor
+    if (error) return error;
+
     /* High-pass filter */
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
