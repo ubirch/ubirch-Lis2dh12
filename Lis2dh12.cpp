@@ -58,8 +58,6 @@ Lis2dh12::~Lis2dh12() {
 int16_t Lis2dh12::init(bool filter_enable) {
     int16_t error = 0;
 
-    i2cAddr = filter_enable ? LIS2DH12_I2C_ADD_L : LIS2DH12_I2C_ADD_H;
-
     /*
      *  Check sensor ID
      */
@@ -82,7 +80,7 @@ int16_t Lis2dh12::init(bool filter_enable) {
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
     ctrlReg2.hpm = 0;                           // filter mode: normal
     ctrlReg2.hpcf = 0b01;                       // cutoff frequency: 1Hz @400Hz
-    ctrlReg2.fds = filter_enable ? 1 : 0;       // filtered data selection
+    ctrlReg2.fds = 0; //fixme filter_enable ? 1 : 0;       // filtered data selection
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
     if (error) return error;
 
@@ -264,8 +262,6 @@ int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {};
-//    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1); fixme
-//    if (error) return error;
     ctrlReg3.i1_overrun = 1;                    // generate FIFO overrun interrupt on INT1 pin
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
