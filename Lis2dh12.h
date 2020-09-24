@@ -59,6 +59,8 @@ public:
 
     int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
+    int16_t getAcceleration(acceleration_t &acceleration);
+
     int16_t enableDoubleClickInterrupt();
 
     int16_t resetDoubleClickInterrupt();
@@ -72,6 +74,8 @@ public:
     int16_t resetInterrupt();
 
     void readAllRegisters(void);
+    int16_t isDRDY(uint8_t *ready);
+    int16_t disableFIFO();
 private:
 
     int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
@@ -83,8 +87,6 @@ private:
     int16_t setDurMs(uint16_t userDurationInMs);
 
     uint8_t setThsMg(uint16_t userThresholdInMg);
-
-    int16_t getAcceleration(acceleration_t &acceleration);
 
     int16_t convert_to_mg(int16_t rawData);
 

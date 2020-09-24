@@ -80,7 +80,7 @@ int16_t Lis2dh12::init(bool filter_enable) {
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
     ctrlReg2.hpm = 0;                           // filter mode: normal
     ctrlReg2.hpcf = 0b01;                       // cutoff frequency: 1Hz @400Hz
-    ctrlReg2.fds = 0; //fixme filter_enable ? 1 : 0;       // filtered data selection
+    ctrlReg2.fds = filter_enable ? 1 : 0;       // filtered data selection
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
     if (error) return error;
 
@@ -100,10 +100,10 @@ int16_t Lis2dh12::init(bool filter_enable) {
     error = resetInterrupt();
     if (error) return error;
 
-    error = setOperatingMode(sampRate, fullScale, resolution);
+    error = enableFIFO();
     if (error) return error;
 
-    error = enableFIFO();
+    error = setOperatingMode(sampRate, fullScale, resolution);
     return error;
 }
 
@@ -141,6 +141,11 @@ int16_t Lis2dh12::enableFIFO() {
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
     error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     return error;
+}
+
+int16_t Lis2dh12::disableFIFO() {
+    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
+    return writeReg(LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
 }
 
 int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
@@ -196,8 +201,7 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
     ctrlReg2.hpm = 0;       // filter mode: normal
     ctrlReg2.hpcf = 0b11;   // cutoff frequency: 1Hz @400Hz
-    ctrlReg2.fds =
-        0;       // filtered data selection: 0: internal filter bypassed; 1: data from internal filter sent to output register and FIFO
+    ctrlReg2.fds = 0;       // filtered data selection
     ctrlReg2.hp = 0b100;    // HPCLICK + HP_IA2 + HP_IA1 -> HP
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
     if (error) return error;
@@ -302,6 +306,17 @@ int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool de
                           accelerationArray[i].z_axis);
     }
     if (debug) EDEBUG_PRINTF("\r\n");
+
+    return error;
+}
+
+int16_t Lis2dh12::isDRDY(uint8_t *ready) {
+    int16_t error = 0;
+    lis2dh12_status_reg_t status;
+
+    error = readReg(LIS2DH12_STATUS_REG, (uint8_t *) &status, 1);
+
+    *ready = status.zyxda;
 
     return error;
 }
