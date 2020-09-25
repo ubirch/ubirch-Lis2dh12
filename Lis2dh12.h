@@ -75,14 +75,13 @@ public:
 
     void readAllRegisters(void);
     int16_t isDRDY(uint8_t *ready);
+    int16_t enableFIFO();
     int16_t disableFIFO();
 private:
 
     int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
     int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
-
-    int16_t enableFIFO();
 
     int16_t setDurMs(uint16_t userDurationInMs);
 

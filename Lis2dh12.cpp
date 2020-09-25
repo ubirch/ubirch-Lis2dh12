@@ -100,7 +100,15 @@ int16_t Lis2dh12::init(bool filter_enable) {
     error = resetInterrupt();
     if (error) return error;
 
-    error = enableFIFO();
+    /* FIFO enable */
+    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
+    ctrlReg5.fifo_en = 1;                   // Enable FIFO
+    error = writeReg(LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
+    if (error) return error;
+
+    lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
+    fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;
+    error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
     if (error) return error;
 
     error = setOperatingMode(sampRate, fullScale, resolution);
@@ -108,12 +116,8 @@ int16_t Lis2dh12::init(bool filter_enable) {
 }
 
 int16_t Lis2dh12::enableSensor() {
-    lis2dh12_ctrl_reg1_t ctrlReg1 = {};
-    ctrlReg1.odr = sampRate;    // Set sampling rate
-    ctrlReg1.xen = 1;   // Enable all axes
-    ctrlReg1.yen = 1;
-    ctrlReg1.zen = 1;
-    return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn on sensor
+    uint8_t data = (sampRate << 4) | 0x7;
+    return writeReg(LIS2DH12_CTRL_REG1, &data, 1); // turn on sensor
 }
 
 int16_t Lis2dh12::disableSensor() {
@@ -127,25 +131,15 @@ int16_t Lis2dh12::disableSensor() {
 }
 
 int16_t Lis2dh12::enableFIFO() {
-    int16_t error = 0;
-
-    /* FIFO enable and latch interrupt request */
-    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
-    ctrlReg5.fifo_en = 1;                   // Enable FIFO
-    ctrlReg5.lir_int1 = 1;                  // latch interrupt request (read INT1_SRC (31h) to reset)
-    error = writeReg(LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
-    if (error) return error;
-
-    /* FIFO control register */
-    lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
-    fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE;  // select FIFO mode
-    error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
-    return error;
+    uint8_t data = 0x80;    // LIS2DH12_DYNAMIC_STREAM_MODE
+    return writeReg(LIS2DH12_FIFO_CTRL_REG, &data, 1);
 }
 
 int16_t Lis2dh12::disableFIFO() {
-    lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
-    return writeReg(LIS2DH12_CTRL_REG5, (uint8_t *) &ctrlReg5, 1);
+    /* reset FIFO */
+    lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
+    fifoCtrlReg.fm = LIS2DH12_BYPASS_MODE;
+    return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
 }
 
 int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
