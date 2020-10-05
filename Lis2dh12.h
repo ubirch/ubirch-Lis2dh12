@@ -59,6 +59,10 @@ public:
 
     int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
+    int16_t getAcceleration(acceleration_t &acceleration);
+
+    int16_t isDRDY(uint8_t *ready);
+
     int16_t enableDoubleClickInterrupt();
 
     int16_t resetDoubleClickInterrupt();
@@ -80,11 +84,11 @@ private:
 
     int16_t enableFIFO();
 
+    int16_t disableFIFO();
+
     int16_t setDurMs(uint16_t userDurationInMs);
 
     uint8_t setThsMg(uint16_t userThresholdInMg);
-
-    int16_t getAcceleration(acceleration_t &acceleration);
 
     int16_t convert_to_mg(int16_t rawData);
 

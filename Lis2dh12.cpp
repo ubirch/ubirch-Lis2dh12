@@ -72,6 +72,9 @@ int16_t Lis2dh12::init() {
         EDEBUG_PRINTF("Sensor ID check OK\r\n");
     }
 
+    error = disableFIFO();
+    if (error) return error;
+
     lis2dh12_ctrl_reg1_t ctrlReg1 = {};
     error = writeReg(LIS2DH12_CTRL_REG1, (uint8_t *) &ctrlReg1, 1); // turn off sensor
     if (error) return error;
@@ -141,6 +144,12 @@ int16_t Lis2dh12::enableFIFO() {
     return error;
 }
 
+int16_t Lis2dh12::disableFIFO() {
+    lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
+    fifoCtrlReg.fm = LIS2DH12_BYPASS_MODE;
+    return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *) &fifoCtrlReg, 1);
+}
+
 int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
     int16_t error = 0;
 
@@ -194,8 +203,7 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
     ctrlReg2.hpm = 0;       // filter mode: normal
     ctrlReg2.hpcf = 0b11;   // cutoff frequency: 1Hz @400Hz
-    ctrlReg2.fds =
-        0;       // filtered data selection: 0: internal filter bypassed; 1: data from internal filter sent to output register and FIFO
+    ctrlReg2.fds = 0;       // filtered data selection
     ctrlReg2.hp = 0b100;    // HPCLICK + HP_IA2 + HP_IA1 -> HP
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
     if (error) return error;
@@ -203,8 +211,6 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     /* configure double click interrupt */
     lis2dh12_click_cfg_t clickCfg = {};
     clickCfg.zd = 1;
-    clickCfg.yd = 1;
-    clickCfg.xd = 1;
     error = writeReg(LIS2DH12_CLICK_CFG, (uint8_t *) &clickCfg, 1);
     if (error) return error;
 
@@ -239,6 +245,9 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {};
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
     ctrlReg3.i1_click = 1;      // generate double click interrupt on INT1 pin
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
@@ -247,12 +256,12 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
 
     /* clear interrupt register */
     uint8_t data;
-    return readReg(LIS2DH12_INT1_SRC, &data, 1);
+    return readReg(LIS2DH12_CLICK_SRC, &data, 1);
 }
 
 int16_t Lis2dh12::resetDoubleClickInterrupt() {
-    lis2dh12_click_src_t clickSrc;
-    return readReg(LIS2DH12_CLICK_SRC, (uint8_t *) &clickSrc, 1);
+    uint8_t data;
+    return readReg(LIS2DH12_CLICK_SRC, &data, 1);
 }
 
 int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
@@ -260,8 +269,9 @@ int16_t Lis2dh12::enableFIFOOverflowInterrupt() {
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3 = {};
-//    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1); fixme
-//    if (error) return error;
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
+
     ctrlReg3.i1_overrun = 1;                    // generate FIFO overrun interrupt on INT1 pin
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
@@ -275,9 +285,9 @@ int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
     int16_t error = 0;
 
     /* Interrupt 1 disable */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {};
-//    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1); fixme
-//    if (error) return error;
+    lis2dh12_ctrl_reg3_t ctrlReg3;
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
+    if (error) return error;
 
     ctrlReg3.i1_overrun = 0;
     return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
@@ -285,8 +295,8 @@ int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
 
 /* reset latched interrupt */
 int16_t Lis2dh12::resetInterrupt() {
-    lis2dh12_int1_src_t int1Src;
-    return readReg(LIS2DH12_INT1_SRC, (uint8_t *) &int1Src, 1);
+    uint8_t data;
+    return readReg(LIS2DH12_INT1_SRC, &data, 1);
 }
 
 int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool debug = false) {
@@ -305,6 +315,17 @@ int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray, bool de
                           accelerationArray[i].z_axis);
     }
     if (debug) EDEBUG_PRINTF("\r\n");
+
+    return error;
+}
+
+int16_t Lis2dh12::isDRDY(uint8_t *ready) {
+    int16_t error = 0;
+    lis2dh12_status_reg_t status;
+
+    error = readReg(LIS2DH12_STATUS_REG, (uint8_t *) &status, 1);
+
+    *ready = status.zyxda;
 
     return error;
 }
@@ -344,10 +365,6 @@ int16_t Lis2dh12::convert_to_mg(int16_t rawData) {
 int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs) {
     int16_t error = 0;
 
-    /* clear interrupts */
-    uint8_t data;
-    readReg(LIS2DH12_INT1_SRC, &data, 1);
-
     /* Set threshold in mg */
     lis2dh12_int1_ths_t int1Ths = {};
     int1Ths.ths = setThsMg(thresholdInMg);
@@ -374,9 +391,14 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     lis2dh12_ctrl_reg3_t ctrlReg3;
     error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
+
     ctrlReg3.i1_ia1 = 1;                    // generate interrupt for interrupt activity on INT1 and set flag
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
     if (error) return error;
+
+    /* clear interrupts */
+    uint8_t data;
+    readReg(LIS2DH12_INT1_SRC, &data, 1);
 
     return error;
 }
