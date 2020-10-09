@@ -49,13 +49,17 @@ public:
 
     int16_t init();
 
-    int16_t selfTest();
-
-    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
-
     int16_t enableSensor();
 
     int16_t disableSensor();
+
+    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
+
+    int16_t initFIFO();
+
+    int16_t enableFIFO();
+
+    int16_t disableFIFO();
 
     int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
@@ -65,6 +69,8 @@ public:
 
     int16_t enableDoubleClickInterrupt();
 
+    int16_t disableDoubleClickInterrupt();
+
     int16_t resetDoubleClickInterrupt();
 
     int16_t enableFIFOOverflowInterrupt();
@@ -73,24 +79,25 @@ public:
 
     int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
 
+    int16_t disableThsInterrupt();
+
     int16_t resetInterrupt();
 
-    void readAllRegisters(void);
+    int16_t selfTest();
+
+    void readAllRegisters();
+
 private:
 
     int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
     int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
-    int16_t enableFIFO();
-
-    int16_t disableFIFO();
-
-    int16_t setDurMs(uint16_t userDurationInMs);
+    int16_t convert_to_mg(int16_t rawData);
 
     uint8_t setThsMg(uint16_t userThresholdInMg);
 
-    int16_t convert_to_mg(int16_t rawData);
+    int16_t setDurMs(uint16_t userDurationInMs);
 
     static uint16_t sampRateToInt(lis2dh12_odr_t sr);
 
