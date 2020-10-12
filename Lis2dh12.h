@@ -31,77 +31,85 @@
 #define ACC_ARRAYSIZE 32    // size of accelerometer FIFO
 #define TEST_ARRAYSIZE 5    // array for sensor self test
 
-typedef struct {
+#define DOUBLE_CLICK_THS 900    // threshold for double click detection in mg
+
+typedef struct
+{
     int16_t x_axis;
     int16_t y_axis;
     int16_t z_axis;
-}acceleration_t;
+} acceleration_t;
 
-typedef enum {
-    NORMAL_10bit = 0,
-    LOW_POWER_8bit = 1,
-} resolution_mode_t;
-
-class Lis2dh12 {
+class Lis2dh12
+{
 public:
-    Lis2dh12(SPI *_spi, DigitalOut *_cs, uint16_t _thresholdInMg, uint16_t _durationInMs, lis2dh12_odr_t _samplRate,
-             lis2dh12_fs_t _fullScale);
+    Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _resolution);
 
     virtual ~Lis2dh12();
 
-    int32_t init();
+    int16_t init();
 
-    int32_t getAccelerationFifo(acceleration_t *accelerationArray);
+    int16_t enableSensor();
+
+    int16_t disableSensor();
+
+    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
+
+    int16_t initFIFO();
+
+    int16_t enableFIFO();
+
+    int16_t disableFIFO();
+
+    int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
+
+    int16_t getAcceleration(acceleration_t &acceleration);
+
+    int16_t isDRDY(uint8_t *ready);
+
+    int16_t enableDoubleClickInterrupt();
+
+    int16_t disableDoubleClickInterrupt();
+
+    int16_t resetDoubleClickInterrupt();
+
+    int16_t enableFIFOOverflowInterrupt();
+
+    int16_t disableFIFOOverflowInterrupt();
+
+    int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
+
+    int16_t disableThsInterrupt();
 
     int16_t resetInterrupt();
 
-    int32_t activateSensor();
+    int16_t selfTest();
 
-    int32_t powerDown();
-
-    int32_t platform_read(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
-
-    int32_t platform_write(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+    void readAllRegisters();
 
 private:
-    int32_t selfTest();
 
-    int32_t enableThsInterrupt();
+    int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
-    int32_t setDuration(uint16_t userDurationInMs);
-
-    int32_t setThreshold(uint16_t userThresholdInMg);
-
-    int32_t getAcceleration(acceleration_t &acceleration);
+    int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
     int16_t convert_to_mg(int16_t rawData);
 
-    int16_t resetInterrupt(bool *_xyzHighEvent);
+    uint8_t setThsMg(uint16_t userThresholdInMg);
 
-    int32_t checkFifoStatus(bool *_overrun);
+    int16_t setDurMs(uint16_t userDurationInMs);
 
-    int32_t checkFifoDataLevel();
+    static uint16_t sampRateToInt(lis2dh12_odr_t sr);
 
-    int16_t waitForOverrunInt();
+    static uint8_t fullScaleToInt(lis2dh12_fs_t fs);
 
-    int16_t waitForThresholdInt();
+    static uint8_t resolutionToInt(lis2dh12_op_md_t r);
 
-    bool isWaitingForThresholdInterrupt();
-
-    void readAllRegisters(void);
-
-    uint8_t tx_buffer[1000];
-
-    SPI *spi;
-    DigitalOut *cs;
-    lis2dh12_ctx_t dev_ctx;
-
-    int16_t error;
-    uint16_t thresholdInMg;
-    uint16_t durationInMs;
-    lis2dh12_odr_t samplRate;
+    I2C *i2c;
+    uint8_t i2cAddr;
+    lis2dh12_odr_t sampRate;
     lis2dh12_fs_t fullScale;
-    bool waitingForThresholdInterrupt;
+    lis2dh12_op_md_t resolution;
 };
 
 #endif //UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
