@@ -67,35 +67,44 @@ int16_t Lis2dh12::init() {
         EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%02x - Got: 0x%02x)\r\n", LIS2DH12_ID, whoamI);
         return 0xffff;
     } else {
-        EDEBUG_PRINTF("Sensor ID check OK\r\n");
+      EDEBUG_PRINTF("Sensor ID check OK\r\n");
     }
 
     error = disableSensor();
-    if (error) return error;
+    if (error)
+      return error;
 
     error = disableFIFO();
-    if (error) return error;
+    if (error)
+      return error;
 
-    /* High-pass filter */
-    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};    // bypass high-pass filter
-    error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
-    if (error) return error;
+    /* High-pass filter configuration */
+    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+    ctrlReg2.hpm = 0;     // filter mode: normal
+    ctrlReg2.hpcf = 0b01; // cutoff frequency: 1Hz@100Hz todo fix magic number
+    error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
+    if (error)
+      return error;
 
-    /* Interrupt 1 enable */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};    // do not enable any interrupts on interrupt 1 pin yet
-    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
+    /* Interrupt 1 disable */
+    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
+    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
+    if (error)
+      return error;
 
-    /* Interrupt 2 enable */
-    lis2dh12_ctrl_reg6_t ctrlReg6 = {0};    // do not enable any interrupt on interrupt 2 pin
-    error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *) &ctrlReg6, 1);
-    if (error) return error;
+    /* Interrupt 2 disable */
+    lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
+    error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
+    if (error)
+      return error;
 
     error = resetDoubleClickInterrupt();
-    if (error) return error;
+    if (error)
+      return error;
 
     error = resetInterrupt();
-    if (error) return error;
+    if (error)
+      return error;
 
     error = setOperatingMode(sampRate, fullScale, resolution);
     if (error) return error;
@@ -250,21 +259,6 @@ int16_t Lis2dh12::isDRDY(uint8_t *ready) {
 int16_t Lis2dh12::enableDoubleClickInterrupt() {
     int16_t error = 0;
 
-    /* configure high pass filter */
-    lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
-    ctrlReg2.hpm = 0;       // filter mode: normal
-    ctrlReg2.hpcf = 0b11;   // cutoff frequency: 1Hz @400Hz
-    ctrlReg2.fds = 0;       // filtered data selection
-    ctrlReg2.hp = 0b100;    // HPCLICK + HP_IA2 + HP_IA1 -> HP
-    error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *) &ctrlReg2, 1);
-    if (error) return error;
-
-    /* configure double click interrupt */
-    lis2dh12_click_cfg_t clickCfg = {};
-    clickCfg.zd = 1;    // only enable for Z-axis
-    error = writeReg(LIS2DH12_CLICK_CFG, (uint8_t *) &clickCfg, 1);
-    if (error) return error;
-
     /* set double click interrupt threshold and latch interrupt */
     EDEBUG_PRINTF("Double Click Threshold: ");
     lis2dh12_click_ths_t clickThs = {};
@@ -284,24 +278,46 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     EDEBUG_PRINTF("Time Latency: ");
     lis2dh12_time_latency_t timeLatency = {};
     timeLatency.tla = setDurMs(53);
-    error = writeReg(LIS2DH12_TIME_LATENCY, (uint8_t *) &timeLatency, 1);
-    if (error) return error;
+    error = writeReg(LIS2DH12_TIME_LATENCY, (uint8_t *)&timeLatency, 1);
+    if (error)
+      return error;
 
     /* set time window */
     EDEBUG_PRINTF("Time Window: ");
     lis2dh12_time_window_t timeWindow = {};
     timeWindow.tw = setDurMs(638);
-    error = writeReg(LIS2DH12_TIME_WINDOW, (uint8_t *) &timeWindow, 1);
-    if (error) return error;
+    error = writeReg(LIS2DH12_TIME_WINDOW, (uint8_t *)&timeWindow, 1);
+    if (error)
+      return error;
 
-    /* Interrupt 1 enable */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {};
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
+    /* double click interrupt configuration */
+    lis2dh12_click_cfg_t clickCfg = {};
+    clickCfg.zd = 1; // only enable for Z-axis
+    error = writeReg(LIS2DH12_CLICK_CFG, (uint8_t *)&clickCfg, 1);
+    if (error)
+      return error;
 
-    ctrlReg3.i1_click = 1;      // generate double click interrupt on INT1 pin
-    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
+    /* configure high pass filter for double click interrupt*/
+    lis2dh12_ctrl_reg2_t ctrlReg2;
+    error = readReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
+    if (error)
+      return error;
+
+    ctrlReg2.hp |= 0b100; // HPCLICK + HP_IA2 + HP_IA1 -> HP
+    error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
+    if (error)
+      return error;
+
+    /* enable interrupt for double click on INT2 pin */
+    lis2dh12_ctrl_reg6_t ctrlReg6 = {};
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg6, 1);
+    if (error)
+      return error;
+
+    ctrlReg6.i2_click = 1; // generate double click interrupt on INT1 pin
+    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg6, 1);
+    if (error)
+      return error;
 
     EDEBUG_PRINTF("\r\nwaiting for double click\r\n");
 
@@ -365,8 +381,9 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     /* Set duration in ms */
     lis2dh12_int1_duration_t int1Dur = {0};
     int1Dur.d = setDurMs(durationInMs);
-    error = writeReg(LIS2DH12_INT1_DURATION, (uint8_t *) &int1Dur, 1);
-    if (error) return error;
+    error = writeReg(LIS2DH12_INT1_DURATION, (uint8_t *)&int1Dur, 1);
+    if (error)
+      return error;
 
     /* Interrupt 1 Configuration */
     lis2dh12_int1_cfg_t int1Cfg = {};
@@ -375,13 +392,15 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationIn
     int1Cfg.xhie = 1;                       // enable high event interrupts on Int1 pin for all axes
     int1Cfg.yhie = 1;                       // (if acc > threshold for t > duration)
     int1Cfg.zhie = 1;
-    error = writeReg(LIS2DH12_INT1_CFG, (uint8_t *) &int1Cfg, 1);
-    if (error) return error;
+    error = writeReg(LIS2DH12_INT1_CFG, (uint8_t *)&int1Cfg, 1);
+    if (error)
+      return error;
 
     /* Interrupt 1 enable */
     lis2dh12_ctrl_reg3_t ctrlReg3;
-    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
-    if (error) return error;
+    error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
+    if (error)
+      return error;
 
     ctrlReg3.i1_ia1 = 1;                    // generate interrupt for interrupt activity on INT1 and set flag
     error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *) &ctrlReg3, 1);
