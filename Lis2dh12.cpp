@@ -43,12 +43,7 @@ int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
   return i2c->write(i2cAddr & 0xFE, dataToSend, len + 1);
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c, lis2dh12_odr_t _sampRate,
-                   lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _resolution)
-    : i2c(_i2c), i2cAddr(LIS2DH12_I2C_ADD_H), sampRate(_sampRate),
-      fullScale(_fullScale), resolution(_resolution) {
-  i2c->frequency(100000);
-}
+Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c) { i2c->frequency(100000); }
 
 Lis2dh12::~Lis2dh12() {}
 
@@ -110,11 +105,6 @@ int16_t Lis2dh12::init() {
   }
 
   error = resetInterrupt();
-  if (error) {
-    return error;
-  }
-
-  error = setOperatingMode(sampRate, fullScale, resolution);
   if (error) {
     return error;
   }
@@ -424,6 +414,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg,
   int16_t error = 0;
 
   /* Set threshold in mg */
+  EDEBUG_PRINTF("Event Acceleration Threshold: ");
   lis2dh12_int1_ths_t int1Ths = {};
   int1Ths.ths = setThsMg(thresholdInMg);
   error = writeReg(LIS2DH12_INT1_THS, (uint8_t *)&int1Ths, 1);
@@ -432,6 +423,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg,
   }
 
   /* Set duration in ms */
+  EDEBUG_PRINTF("Event Duration Threshold: ");
   lis2dh12_int1_duration_t int1Dur = {0};
   int1Dur.d = setDurMs(durationInMs);
   error = writeReg(LIS2DH12_INT1_DURATION, (uint8_t *)&int1Dur, 1);
