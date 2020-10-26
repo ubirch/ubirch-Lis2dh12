@@ -156,7 +156,7 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate,
   EDEBUG_PRINTF("Setting operating mode:\r\n"
                 "  - samp. rate: %3d Hz\r\n"
                 "  - full scale: %3d G\r\n"
-                "  - resolution: %3d bit\r\n",
+                "  - resolution: %3d bit\r\n\r\n",
                 sampRateToInt(sampRate), fullScaleToInt(fullScale),
                 resolutionToInt(resolution));
 
@@ -213,11 +213,6 @@ int16_t Lis2dh12::enableFIFO() {
   lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
   fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE; // select FIFO mode
   error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
-
-  /* wait duration of turn-on time (7/odr) */
-  if (sampRate != LIS2DH12_POWER_DOWN) {
-    wait(float(7) / float(sampRateToInt(sampRate)));
-  }
 
   return error;
 }
@@ -355,7 +350,7 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     return error;
   }
 
-  EDEBUG_PRINTF("\r\nwaiting for double click\r\n");
+  EDEBUG_PRINTF("Double Click Interrupt enabled\r\n\r\n");
 
   /* clear interrupt register */
   return resetDoubleClickInterrupt();
@@ -418,7 +413,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg,
   int16_t error = 0;
 
   /* Set threshold in mg */
-  EDEBUG_PRINTF("Event Acceleration Threshold: ");
+  EDEBUG_PRINTF("Threshold Event Acceleration: ");
   lis2dh12_int1_ths_t int1Ths = {};
   int1Ths.ths = setThsMg(thresholdInMg);
   error = writeReg(LIS2DH12_INT1_THS, (uint8_t *)&int1Ths, 1);
@@ -427,7 +422,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg,
   }
 
   /* Set duration in ms */
-  EDEBUG_PRINTF("Event Duration Threshold: ");
+  EDEBUG_PRINTF("Threshold Event Duration: ");
   lis2dh12_int1_duration_t int1Dur = {0};
   int1Dur.d = setDurMs(durationInMs);
   error = writeReg(LIS2DH12_INT1_DURATION, (uint8_t *)&int1Dur, 1);
@@ -474,6 +469,7 @@ int16_t Lis2dh12::enableThsInterrupt(uint16_t thresholdInMg,
   if (error) {
     return error;
   }
+  EDEBUG_PRINTF("Threshold Event Interrupt enabled\r\n\r\n");
 
   /* clear interrupts */
   return resetInterrupt();
@@ -636,7 +632,7 @@ int16_t Lis2dh12::selfTest() {
   if ((minST <= absDif.x_axis) && (absDif.x_axis <= maxST) &&
       (minST <= absDif.y_axis) && (absDif.y_axis <= maxST) &&
       (minST <= absDif.z_axis) && (absDif.z_axis <= maxST)) {
-    EDEBUG_PRINTF("Sensor self test passed\r\n");
+    EDEBUG_PRINTF("Sensor self test passed\r\n\r\n");
     return 0;
   } else {
     EDEBUG_PRINTF(" - - - SENSOR SELF TEST FAILED! - - - \r\n");
