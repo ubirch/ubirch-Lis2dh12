@@ -192,7 +192,9 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate,
   }
 
   /* wait duration of turn-on time (7/odr) */
-  wait(float(7) / float(sampRateToInt(sampRate)));
+  if (sampRate != LIS2DH12_POWER_DOWN) {
+    wait(float(7) / float(sampRateToInt(sampRate)));
+  }
 
   return error;
 }
@@ -213,7 +215,9 @@ int16_t Lis2dh12::enableFIFO() {
   error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 
   /* wait duration of turn-on time (7/odr) */
-  wait(float(7) / float(sampRateToInt(sampRate)));
+  if (sampRate != LIS2DH12_POWER_DOWN) {
+    wait(float(7) / float(sampRateToInt(sampRate)));
+  }
 
   return error;
 }
