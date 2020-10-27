@@ -202,24 +202,38 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate,
 int16_t Lis2dh12::initFIFO() {
   /* FIFO enable and latch interrupt request */
   lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
-  ctrlReg5.fifo_en = 1; // Enable FIFO
-  ctrlReg5.lir_int1 =
-      1; // latch interrupt request (read INT1_SRC (31h) to reset)
+  ctrlReg5.fifo_en = 1;  // Enable FIFO
+  ctrlReg5.lir_int1 = 1; // latch interrupt request
+                         // (read INT1_SRC (31h) to reset)
   return writeReg(LIS2DH12_CTRL_REG5, (uint8_t *)&ctrlReg5, 1);
 }
 
 int16_t Lis2dh12::enableFIFO() {
-  int16_t error = 0;
   lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
   fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE; // select FIFO mode
-  error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
-
-  return error;
+  return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 }
 
 int16_t Lis2dh12::disableFIFO() {
   lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
-  fifoCtrlReg.fm = LIS2DH12_BYPASS_MODE;
+  return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
+}
+
+int16_t Lis2dh12::resetFIFO() {
+  lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
+
+  // disable FIFO
+  int16_t error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
+  if (error) {
+    return error;
+  }
+
+  if (sampRate != LIS2DH12_POWER_DOWN) {
+    wait(float(1) / float(sampRateToInt(sampRate)));
+  }
+
+  // re-enable FIFO
+  fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE; // select FIFO mode
   return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 }
 
