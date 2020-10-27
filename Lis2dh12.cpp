@@ -76,11 +76,7 @@ int16_t Lis2dh12::init() {
     return error;
   }
 
-  /* High-pass filter configuration */
-  lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
-  ctrlReg2.hpm = 0;     // filter mode: normal
-  ctrlReg2.hpcf = 0b01; // cutoff frequency: 1Hz@100Hz todo fix magic number
-  error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
+  error = initHPF();
   if (error) {
     return error;
   }
@@ -235,6 +231,13 @@ int16_t Lis2dh12::resetFIFO() {
   // re-enable FIFO
   fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE; // select FIFO mode
   return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
+}
+
+int16_t Lis2dh12::initHPF() {
+  lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
+  ctrlReg2.hpm = 0;     // filter mode: normal
+  ctrlReg2.hpcf = 0b01; // cutoff frequency: 1Hz@100Hz todo fix magic number
+  return writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
 }
 
 int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray,
