@@ -371,36 +371,30 @@ int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
 int16_t Lis2dh12::enableThsInt() {
   int16_t error = 0;
 
-  /* enable interrupt for IA1 on INT1 pin */
-  lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-  ctrlReg3.i1_ia1 = 1;
-  error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
+  /* enable interrupt for IA1 on INT2 pin */
+  lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
+  ctrlReg6.i2_ia1 = 1;
+  error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
   if (error) {
     return error;
   }
   EDEBUG_PRINTF("Threshold Event Interrupt enabled\r\n\r\n");
 
   /* clear interrupts */
-  return resetInt1();
+  return resetInt2();
 }
 
 int16_t Lis2dh12::disableThsInterrupt() {
   int16_t error = 0;
 
-  lis2dh12_ctrl_reg3_t ctrlReg3;
-  error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
+  lis2dh12_ctrl_reg6_t ctrlReg6;
+  error = readReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
   if (error) {
     return error;
   }
 
-  ctrlReg3.i1_ia1 = 0;
-  error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
-  if (error) {
-    return error;
-  }
-  EDEBUG_PRINTF("Threshold Event Interrupt enabled\r\n\r\n");
-
-  return error;
+  ctrlReg6.i2_ia1 = 0;
+  return writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
 }
 
 int16_t Lis2dh12::enableFIFOOverrunInt() {
