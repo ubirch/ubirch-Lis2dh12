@@ -70,21 +70,27 @@ public:
 
   int16_t isDRDY(uint8_t *ready);
 
-  int16_t enableDoubleClickInterrupt();
+  int16_t isFIFOfull(uint8_t *overrun);
 
-  int16_t disableDoubleClickInterrupt();
+  int16_t resetInt1();
 
-  int16_t resetDoubleClickInterrupt();
+  int16_t resetInt2();
 
-  int16_t enableFIFOOverflowInterrupt();
+  int16_t initThsInt(uint16_t thresholdInMg, uint16_t durationInMs);
 
-  int16_t disableFIFOOverflowInterrupt();
-
-  int16_t enableThsInterrupt(uint16_t thresholdInMg, uint16_t durationInMs);
+  int16_t enableThsInt();
 
   int16_t disableThsInterrupt();
 
-  int16_t resetInterrupt();
+  int16_t enableFIFOOverrunInt();
+
+  int16_t disableFIFOOverflowInterrupt();
+
+  int16_t resetDoubleClickInterrupt();
+
+  int16_t enableDoubleClickInterrupt();
+
+  int16_t disableDoubleClickInterrupt();
 
   int16_t selfTest();
 
