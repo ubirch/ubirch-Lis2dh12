@@ -201,8 +201,6 @@ int16_t Lis2dh12::initFIFO() {
   ctrlReg5.fifo_en = 1;  // Enable FIFO
   ctrlReg5.lir_int1 = 1; // latch interrupt 1 request
                          // (read INT1_SRC (31h) to reset)
-  ctrlReg5.lir_int2 = 1; // latch interrupt 2 request
-                         // (read INT2_SRC (35h) to reset)
   return writeReg(LIS2DH12_CTRL_REG5, (uint8_t *)&ctrlReg5, 1);
 }
 
