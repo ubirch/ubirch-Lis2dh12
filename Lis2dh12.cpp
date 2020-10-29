@@ -384,7 +384,7 @@ int16_t Lis2dh12::enableThsInt() {
   return resetInt2();
 }
 
-int16_t Lis2dh12::disableThsInterrupt() {
+int16_t Lis2dh12::disableThsInt() {
   int16_t error = 0;
 
   lis2dh12_ctrl_reg6_t ctrlReg6;
@@ -394,7 +394,13 @@ int16_t Lis2dh12::disableThsInterrupt() {
   }
 
   ctrlReg6.i2_ia1 = 0;
-  return writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
+  error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
+  if (error) {
+    return error;
+  }
+  EDEBUG_PRINTF("Threshold Event Interrupt disabled\r\n\r\n");
+
+  return error;
 }
 
 int16_t Lis2dh12::enableFIFOOverrunInt() {
@@ -413,7 +419,7 @@ int16_t Lis2dh12::enableFIFOOverrunInt() {
   return resetInt1();
 }
 
-int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
+int16_t Lis2dh12::disableFIFOOverrunInt() {
   int16_t error = 0;
 
   lis2dh12_ctrl_reg3_t ctrlReg3;
@@ -423,7 +429,13 @@ int16_t Lis2dh12::disableFIFOOverflowInterrupt() {
   }
 
   ctrlReg3.i1_overrun = 0;
-  return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
+  error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
+  if (error) {
+    return error;
+  }
+  EDEBUG_PRINTF("FIFO Overrun Interrupt disabled\r\n\r\n");
+
+  return error;
 }
 
 int16_t Lis2dh12::enableDoubleClickInterrupt() {

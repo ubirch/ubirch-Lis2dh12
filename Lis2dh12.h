@@ -80,11 +80,11 @@ public:
 
   int16_t enableThsInt();
 
-  int16_t disableThsInterrupt();
+  int16_t disableThsInt();
 
   int16_t enableFIFOOverrunInt();
 
-  int16_t disableFIFOOverflowInterrupt();
+  int16_t disableFIFOOverrunInt();
 
   int16_t resetDoubleClickInterrupt();
 
