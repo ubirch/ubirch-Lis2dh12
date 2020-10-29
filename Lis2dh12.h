@@ -72,15 +72,13 @@ public:
 
   int16_t isFIFOfull(uint8_t *overrun);
 
-  int16_t resetInt1();
-
-  int16_t resetInt2();
-
   int16_t initThsInt(uint16_t thresholdInMg, uint16_t durationInMs);
 
   int16_t enableThsInt();
 
   int16_t disableThsInt();
+
+  int16_t resetThsInt();
 
   int16_t enableFIFOOverrunInt();
 

@@ -100,12 +100,7 @@ int16_t Lis2dh12::init() {
     return error;
   }
 
-  error = resetInt1();
-  if (error) {
-    return error;
-  }
-
-  error = resetInt2();
+  error = resetThsInt();
   if (error) {
     return error;
   }
@@ -309,16 +304,10 @@ int16_t Lis2dh12::isFIFOfull(uint8_t *overrun) {
   return error;
 }
 
-/* reset latched interrupt 1 */
-int16_t Lis2dh12::resetInt1() {
+/* reset latched IA1 interrupt */
+int16_t Lis2dh12::resetThsInt() {
   uint8_t data;
   return readReg(LIS2DH12_INT1_SRC, &data, 1);
-}
-
-/* reset latched interrupt 2 */
-int16_t Lis2dh12::resetInt2() {
-  uint8_t data;
-  return readReg(LIS2DH12_INT2_SRC, &data, 1);
 }
 
 int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
@@ -368,20 +357,18 @@ int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
   return writeReg(LIS2DH12_INT1_CFG, (uint8_t *)&int1Cfg, 1);
 }
 
+/* enable interrupt for IA1 on INT2 pin */
 int16_t Lis2dh12::enableThsInt() {
-  int16_t error = 0;
-
-  /* enable interrupt for IA1 on INT2 pin */
   lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
   ctrlReg6.i2_ia1 = 1;
-  error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
+  int16_t error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
   if (error) {
     return error;
   }
   EDEBUG_PRINTF("Threshold Event Interrupt enabled\r\n\r\n");
 
   /* clear interrupts */
-  return resetInt2();
+  return resetThsInt();
 }
 
 int16_t Lis2dh12::disableThsInt() {
@@ -403,20 +390,11 @@ int16_t Lis2dh12::disableThsInt() {
   return error;
 }
 
+/* enable interrupt for fifo overflow on INT1 pin */
 int16_t Lis2dh12::enableFIFOOverrunInt() {
-  int16_t error = 0;
-
-  /* enable interrupt for fifo overflow on INT1 pin */
   lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
   ctrlReg3.i1_overrun = 1;
-  error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
-  if (error) {
-    return error;
-  }
-  EDEBUG_PRINTF("FIFO Overrun Interrupt enabled\r\n\r\n");
-
-  /* clear interrupts */
-  return resetInt1();
+  return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
 }
 
 int16_t Lis2dh12::disableFIFOOverrunInt() {
