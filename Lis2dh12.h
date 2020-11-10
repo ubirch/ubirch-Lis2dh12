@@ -62,7 +62,7 @@ public:
 
   int16_t resetFIFO();
 
-  int16_t initHPF();
+  int16_t initHPF(uint8_t hpcf = 0);
 
   int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 

@@ -76,19 +76,12 @@ int16_t Lis2dh12::init() {
     return error;
   }
 
-  error = initHPF();
-  if (error) {
-    return error;
-  }
-
-  /* Interrupt 1 disable */
+  /* disable interrupts */
   lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
   error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
   if (error) {
     return error;
   }
-
-  /* Interrupt 2 disable */
   lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
   error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
   if (error) {
@@ -101,6 +94,11 @@ int16_t Lis2dh12::init() {
   }
 
   error = resetThsInt();
+  if (error) {
+    return error;
+  }
+
+  error = initHPF(0);
   if (error) {
     return error;
   }
@@ -233,10 +231,10 @@ int16_t Lis2dh12::resetFIFO() {
   return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 }
 
-int16_t Lis2dh12::initHPF() {
+int16_t Lis2dh12::initHPF(uint8_t hpcf) {
   lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
   ctrlReg2.hpm = 0;     // filter mode: normal
-  ctrlReg2.hpcf = 0b01; // cutoff frequency: 1Hz@100Hz todo fix magic number
+  ctrlReg2.hpcf = hpcf & 0b11; // cutoff frequency
   return writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
 }
 
