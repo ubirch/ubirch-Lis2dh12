@@ -98,11 +98,6 @@ int16_t Lis2dh12::init() {
     return error;
   }
 
-  error = initHPF(0);
-  if (error) {
-    return error;
-  }
-
   error = initFIFO();
   if (error) {
     return error;
@@ -232,6 +227,7 @@ int16_t Lis2dh12::resetFIFO() {
 }
 
 int16_t Lis2dh12::initHPF(uint8_t hpcf) {
+  EDEBUG_PRINTF("High-pass filter cutoff frequency: %x\r\n\r\n", (hpcf & 0b11));
   lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
   ctrlReg2.hpm = 0;     // filter mode: normal
   ctrlReg2.hpcf = hpcf & 0b11; // cutoff frequency
@@ -665,6 +661,12 @@ void Lis2dh12::readAllRegisters(void) {
     EDEBUG_PRINTF("REG 0x%02x = 0x%02x\r\n", i, buf);
   }
   EDEBUG_PRINTF("---------------\r\n");
+}
+
+void Lis2dh12::readRegister(uint8_t registerAddr) {
+  uint8_t buf;
+  readReg(registerAddr, &buf, 1);
+  EDEBUG_PRINTF("REG 0x%02x = 0x%02x\r\n\r\n", registerAddr, buf);
 }
 
 int16_t Lis2dh12::convert_to_mg(int16_t rawData) {

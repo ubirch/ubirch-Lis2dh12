@@ -94,6 +94,8 @@ public:
 
   void readAllRegisters();
 
+  void readRegister(uint8_t registerAddr);
+
 private:
   int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
