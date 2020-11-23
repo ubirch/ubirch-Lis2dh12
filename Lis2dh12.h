@@ -47,6 +47,8 @@ class Lis2dh12 {
 
     int16_t init();
 
+    bool whoAmI();
+
     int16_t enableSensor();
 
     int16_t disableSensor();

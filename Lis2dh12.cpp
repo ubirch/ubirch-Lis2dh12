@@ -48,52 +48,10 @@ Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c), sampRate(), fullScale(), resolution()
 Lis2dh12::~Lis2dh12() {}
 
 int16_t Lis2dh12::init() {
-    int16_t error = 0;
+    int16_t error;
 
-    /*  Check sensor ID */
-    uint8_t whoamI;
-    error = readReg(LIS2DH12_WHO_AM_I, &whoamI, 1);
-    if (error) {
-        return error;
-    }
-
-    if (whoamI != LIS2DH12_ID) {
-        EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%02x - Got: 0x%02x)\r\n", LIS2DH12_ID, whoamI);
+    if (!whoAmI()) {
         return 0xffff;
-    } else {
-        EDEBUG_PRINTF("Sensor ID check OK\r\n");
-    }
-
-    error = disableSensor();
-    if (error) {
-        return error;
-    }
-
-    error = disableFIFO();
-    if (error) {
-        return error;
-    }
-
-    /* disable interrupts */
-    lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
-    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
-    if (error) {
-        return error;
-    }
-    lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
-    error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
-    if (error) {
-        return error;
-    }
-
-    error = resetDoubleClickInterrupt();
-    if (error) {
-        return error;
-    }
-
-    error = resetThsInt();
-    if (error) {
-        return error;
     }
 
     error = initFIFO();
@@ -103,6 +61,24 @@ int16_t Lis2dh12::init() {
 
     error = enableFIFO();
     return error;
+}
+
+/*  Check sensor ID */
+bool Lis2dh12::whoAmI() {
+    int16_t error = 0;
+    uint8_t whoamI;
+    error = readReg(LIS2DH12_WHO_AM_I, &whoamI, 1);
+    if (error) {
+        return false;
+    }
+
+    if (whoamI != LIS2DH12_ID) {
+        EDEBUG_PRINTF("Sensor ID check failed! (Expected ID: 0x%02x - Got: 0x%02x)\r\n", LIS2DH12_ID, whoamI);
+        return false;
+    } else {
+        EDEBUG_PRINTF("Sensor ID check OK\r\n");
+        return true;
+    }
 }
 
 int16_t Lis2dh12::enableSensor() {
