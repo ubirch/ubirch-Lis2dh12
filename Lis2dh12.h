@@ -34,90 +34,89 @@
 #define DOUBLE_CLICK_THS 900 // threshold for double click detection in mg
 
 typedef struct {
-  int16_t x_axis;
-  int16_t y_axis;
-  int16_t z_axis;
+    int16_t x_axis;
+    int16_t y_axis;
+    int16_t z_axis;
 } acceleration_t;
 
 class Lis2dh12 {
-public:
-  Lis2dh12(I2C *_i2c);
+  public:
+    Lis2dh12(I2C *_i2c);
 
-  virtual ~Lis2dh12();
+    virtual ~Lis2dh12();
 
-  int16_t init();
+    int16_t init();
 
-  int16_t enableSensor();
+    int16_t enableSensor();
 
-  int16_t disableSensor();
+    int16_t disableSensor();
 
-  int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale,
-                           lis2dh12_op_md_t _res);
+    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
 
-  int16_t initFIFO();
+    int16_t initFIFO();
 
-  int16_t enableFIFO();
+    int16_t enableFIFO();
 
-  int16_t disableFIFO();
+    int16_t disableFIFO();
 
-  int16_t resetFIFO();
+    int16_t resetFIFO();
 
-  int16_t initHPF(uint8_t hpcf = 0);
+    int16_t initHPF(uint8_t hpcf = 0);
 
-  int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
+    int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
 
-  int16_t getAcceleration(acceleration_t &acceleration);
+    int16_t getAcceleration(acceleration_t &acceleration);
 
-  int16_t isDRDY(uint8_t *ready);
+    int16_t isDRDY(uint8_t *ready);
 
-  int16_t isFIFOfull(uint8_t *overrun);
+    int16_t isFIFOfull(uint8_t *overrun);
 
-  int16_t initThsInt(uint16_t thresholdInMg, uint16_t durationInMs);
+    int16_t initThsInt(uint16_t thresholdInMg, uint16_t durationInMs);
 
-  int16_t enableThsInt();
+    int16_t enableThsInt();
 
-  int16_t disableThsInt();
+    int16_t disableThsInt();
 
-  int16_t resetThsInt();
+    int16_t resetThsInt();
 
-  int16_t enableFIFOOverrunInt();
+    int16_t enableFIFOOverrunInt();
 
-  int16_t disableFIFOOverrunInt();
+    int16_t disableFIFOOverrunInt();
 
-  int16_t resetDoubleClickInterrupt();
+    int16_t resetDoubleClickInterrupt();
 
-  int16_t enableDoubleClickInterrupt();
+    int16_t enableDoubleClickInterrupt();
 
-  int16_t disableDoubleClickInterrupt();
+    int16_t disableDoubleClickInterrupt();
 
-  int16_t selfTest();
+    int16_t selfTest();
 
-  void readAllRegisters();
+    void readAllRegisters();
 
-  void readRegister(uint8_t registerAddr);
+    void readRegister(uint8_t registerAddr);
 
-private:
-  int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+  private:
+    int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
-  int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
+    int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
-  int16_t convert_to_mg(int16_t rawData);
+    int16_t convert_to_mg(int16_t rawData);
 
-  uint8_t setThsMg(uint16_t userThresholdInMg);
+    uint8_t setThsMg(uint16_t userThresholdInMg);
 
-  int16_t setDurMs(uint16_t userDurationInMs);
+    int16_t setDurMs(uint16_t userDurationInMs);
 
-  uint16_t sampRateToInt(lis2dh12_odr_t sr);
+    uint16_t sampRateToInt(lis2dh12_odr_t sr);
 
-  uint8_t fullScaleToInt(lis2dh12_fs_t fs);
+    uint8_t fullScaleToInt(lis2dh12_fs_t fs);
 
-  uint8_t resolutionToInt(lis2dh12_op_md_t r);
+    uint8_t resolutionToInt(lis2dh12_op_md_t r);
 
-  I2C *i2c;
-  uint8_t i2cAddr = LIS2DH12_I2C_ADD_H;
-  lis2dh12_odr_t sampRate = LIS2DH12_POWER_DOWN;
-  lis2dh12_fs_t fullScale = LIS2DH12_2g;
-  lis2dh12_op_md_t resolution = LIS2DH12_NM_10bit;
+    I2C *i2c;
+    uint8_t i2cAddr = LIS2DH12_I2C_ADD_H;
+    lis2dh12_odr_t sampRate;
+    lis2dh12_fs_t fullScale;
+    lis2dh12_op_md_t resolution;
 };
 
 #endif // UBIRCH_ENERTHING_FIRMWARE_LIS2DH12_H
