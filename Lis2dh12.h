@@ -63,7 +63,7 @@ class Lis2dh12 {
 
     int16_t initHPF(uint8_t hpcf = 0);
 
-    int16_t getAccelerationFifo(acceleration_t *accelerationArray, bool debug);
+    int16_t getAccelerationFifo(acceleration_t *accelerationArray);
 
     int16_t getAcceleration(acceleration_t &acceleration);
 
