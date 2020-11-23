@@ -43,7 +43,7 @@ int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
   return i2c->write(i2cAddr & 0xFE, dataToSend, len + 1);
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c) { i2c->frequency(100000); }
+Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c) {}
 
 Lis2dh12::~Lis2dh12() {}
 
