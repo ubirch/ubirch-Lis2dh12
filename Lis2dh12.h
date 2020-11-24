@@ -41,66 +41,66 @@ typedef struct {
 
 class Lis2dh12 {
   public:
-    Lis2dh12(I2C *_i2c);
+    explicit Lis2dh12(I2C *_i2c);
 
     virtual ~Lis2dh12();
 
-    int16_t init();
+    int8_t init();
 
     bool whoAmI();
 
-    int16_t enableSensor();
+    int8_t enableSensor();
 
-    int16_t disableSensor();
+    int8_t disableSensor();
 
-    int16_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
+    int8_t setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res);
 
-    int16_t initFIFO();
+    int8_t initFIFO();
 
-    int16_t enableFIFO();
+    int8_t enableFIFO();
 
-    int16_t disableFIFO();
+    int8_t disableFIFO();
 
-    int16_t resetFIFO();
+    int8_t resetFIFO();
 
-    int16_t initHPF(uint8_t hpcf = 0);
+    int8_t initHPF(uint8_t hpcf = 0);
 
-    int16_t getAccelerationFifo(acceleration_t *accelerationArray);
+    int8_t getAccelerationFifo(acceleration_t *accelerationArray);
 
-    int16_t getAcceleration(acceleration_t &acceleration);
+    int8_t getAcceleration(acceleration_t &acceleration);
 
-    int16_t isDRDY(uint8_t *ready);
+    int8_t isDRDY(uint8_t *ready);
 
-    int16_t isFIFOfull(uint8_t *overrun);
+    int8_t isFIFOfull(uint8_t *overrun);
 
-    int16_t initThsInt(uint16_t thresholdInMg, uint16_t durationInMs);
+    int8_t initThsInt(uint16_t thresholdInMg, uint16_t durationInMs);
 
-    int16_t enableThsInt();
+    int8_t enableThsInt();
 
-    int16_t disableThsInt();
+    int8_t disableThsInt();
 
-    int16_t resetThsInt();
+    int8_t resetThsInt();
 
-    int16_t enableFIFOOverrunInt();
+    int8_t enableFIFOOverrunInt();
 
-    int16_t disableFIFOOverrunInt();
+    int8_t disableFIFOOverrunInt();
 
-    int16_t resetDoubleClickInterrupt();
+    int8_t resetDoubleClickInterrupt();
 
-    int16_t enableDoubleClickInterrupt();
+    int8_t enableDoubleClickInterrupt();
 
-    int16_t disableDoubleClickInterrupt();
+    int8_t disableDoubleClickInterrupt();
 
-    int16_t selfTest();
+    int8_t selfTest();
 
     void readAllRegisters();
 
     void readRegister(uint8_t registerAddr);
 
   private:
-    int16_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
+    int8_t readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize);
 
-    int16_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
+    int8_t writeReg(uint8_t regAddr, uint8_t *data, uint16_t len);
 
     int16_t convert_to_mg(int16_t rawData);
 
@@ -115,7 +115,7 @@ class Lis2dh12 {
     uint8_t resolutionToInt(lis2dh12_op_md_t r);
 
     I2C *i2c;
-    uint8_t i2cAddr = LIS2DH12_I2C_ADD_H;
+    uint8_t i2cAddr;
     lis2dh12_odr_t sampRate;
     lis2dh12_fs_t fullScale;
     lis2dh12_op_md_t resolution;

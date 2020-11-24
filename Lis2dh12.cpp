@@ -26,7 +26,7 @@
 #include <edebug.h>
 
 // returns 0 on success , non-0 on failure
-int16_t Lis2dh12::readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
+int8_t Lis2dh12::readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
     if (buffSize > 1) {
         regAddr |= 0x80;
     }
@@ -35,7 +35,7 @@ int16_t Lis2dh12::readReg(uint8_t regAddr, uint8_t *buff, uint16_t buffSize) {
 }
 
 // returns 0 on success , non-0 on failure
-int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
+int8_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
     char dataToSend[len + 1];
 
     dataToSend[0] = regAddr;
@@ -43,15 +43,15 @@ int16_t Lis2dh12::writeReg(uint8_t regAddr, uint8_t *data, uint16_t len) {
     return i2c->write(i2cAddr & 0xFE, dataToSend, len + 1);
 }
 
-Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c), sampRate(), fullScale(), resolution() {}
+Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c), i2cAddr(LIS2DH12_I2C_ADD_H), sampRate(), fullScale(), resolution() {}
 
 Lis2dh12::~Lis2dh12() {}
 
-int16_t Lis2dh12::init() {
-    int16_t error;
+int8_t Lis2dh12::init() {
+    int8_t error;
 
     if (!whoAmI()) {
-        return 0xffff;
+        return -1;
     }
 
     error = initFIFO();
@@ -65,9 +65,8 @@ int16_t Lis2dh12::init() {
 
 /*  Check sensor ID */
 bool Lis2dh12::whoAmI() {
-    int16_t error = 0;
     uint8_t whoamI;
-    error = readReg(LIS2DH12_WHO_AM_I, &whoamI, 1);
+    int8_t error = readReg(LIS2DH12_WHO_AM_I, &whoamI, 1);
     if (error) {
         return false;
     }
@@ -81,8 +80,9 @@ bool Lis2dh12::whoAmI() {
     }
 }
 
-int16_t Lis2dh12::enableSensor() {
-    int16_t error = 0;
+int8_t Lis2dh12::enableSensor() {
+    int8_t error;
+
     lis2dh12_ctrl_reg1_t ctrlReg1;
     error = readReg(LIS2DH12_CTRL_REG1, (uint8_t *)&ctrlReg1, 1);
     if (error) {
@@ -93,8 +93,9 @@ int16_t Lis2dh12::enableSensor() {
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *)&ctrlReg1, 1); // turn on sensor
 }
 
-int16_t Lis2dh12::disableSensor() {
-    int16_t error = 0;
+int8_t Lis2dh12::disableSensor() {
+    int8_t error;
+
     lis2dh12_ctrl_reg1_t ctrlReg1;
     error = readReg(LIS2DH12_CTRL_REG1, (uint8_t *)&ctrlReg1, 1);
     if (error) {
@@ -105,8 +106,8 @@ int16_t Lis2dh12::disableSensor() {
     return writeReg(LIS2DH12_CTRL_REG1, (uint8_t *)&ctrlReg1, 1); // turn off sensor
 }
 
-int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
-    int16_t error = 0;
+int8_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _fullScale, lis2dh12_op_md_t _res) {
+    int8_t error;
 
     sampRate = _sampRate;
     fullScale = _fullScale;
@@ -157,7 +158,7 @@ int16_t Lis2dh12::setOperatingMode(lis2dh12_odr_t _sampRate, lis2dh12_fs_t _full
     return error;
 }
 
-int16_t Lis2dh12::initFIFO() {
+int8_t Lis2dh12::initFIFO() {
     /* FIFO enable and latch interrupt request */
     lis2dh12_ctrl_reg5_t ctrlReg5 = {0};
     ctrlReg5.fifo_en = 1;  // Enable FIFO
@@ -166,22 +167,24 @@ int16_t Lis2dh12::initFIFO() {
     return writeReg(LIS2DH12_CTRL_REG5, (uint8_t *)&ctrlReg5, 1);
 }
 
-int16_t Lis2dh12::enableFIFO() {
+int8_t Lis2dh12::enableFIFO() {
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     fifoCtrlReg.fm = LIS2DH12_DYNAMIC_STREAM_MODE; // select FIFO mode
     return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 }
 
-int16_t Lis2dh12::disableFIFO() {
+int8_t Lis2dh12::disableFIFO() {
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
     return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 }
 
-int16_t Lis2dh12::resetFIFO() {
+int8_t Lis2dh12::resetFIFO() {
+    int8_t error;
+
     lis2dh12_fifo_ctrl_reg_t fifoCtrlReg = {0};
 
     // disable FIFO
-    int16_t error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
+    error = writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
     if (error) {
         return error;
     }
@@ -195,8 +198,9 @@ int16_t Lis2dh12::resetFIFO() {
     return writeReg(LIS2DH12_FIFO_CTRL_REG, (uint8_t *)&fifoCtrlReg, 1);
 }
 
-int16_t Lis2dh12::initHPF(uint8_t hpcf) {
-    int16_t error;
+int8_t Lis2dh12::initHPF(uint8_t hpcf) {
+    int8_t error;
+
     EDEBUG_PRINTF("High-pass filter cutoff frequency IDX: %x\r\n\r\n", (hpcf & 0b11));
     lis2dh12_ctrl_reg2_t ctrlReg2 = {0};
     ctrlReg2.hpm = 0;            // filter mode: normal
@@ -212,8 +216,8 @@ int16_t Lis2dh12::initHPF(uint8_t hpcf) {
     return readReg(LIS2DH12_REFERENCE, &buf, 1);
 }
 
-int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
-    int16_t error = 0;
+int8_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
+    int8_t error;
 
     for (int i = 0; i < ACC_ARRAYSIZE; i++) {
         error = getAcceleration(accelerationArray[i]);
@@ -224,13 +228,12 @@ int16_t Lis2dh12::getAccelerationFifo(acceleration_t *accelerationArray) {
     return error;
 }
 
-int16_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
-    int16_t error = 0;
+int8_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
     axis3bit16_t data_raw_acceleration;
     memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
 
     /* read accelerometer data from sensor */
-    error = readReg(LIS2DH12_OUT_X_L, data_raw_acceleration.u8bit, 6);
+    int8_t error = readReg(LIS2DH12_OUT_X_L, data_raw_acceleration.u8bit, 6);
     if (error) {
         return error;
     }
@@ -242,20 +245,20 @@ int16_t Lis2dh12::getAcceleration(acceleration_t &acceleration) {
     return error;
 }
 
-int16_t Lis2dh12::isDRDY(uint8_t *ready) {
+int8_t Lis2dh12::isDRDY(uint8_t *ready) {
     lis2dh12_status_reg_t status;
 
-    int16_t error = readReg(LIS2DH12_STATUS_REG, (uint8_t *)&status, 1);
+    int8_t error = readReg(LIS2DH12_STATUS_REG, (uint8_t *)&status, 1);
 
     *ready = status.zyxda;
 
     return error;
 }
 
-int16_t Lis2dh12::isFIFOfull(uint8_t *overrun) {
+int8_t Lis2dh12::isFIFOfull(uint8_t *overrun) {
     lis2dh12_fifo_src_reg_t fifoSrcReg = {0};
 
-    int16_t error = readReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *)&fifoSrcReg, 1);
+    int8_t error = readReg(LIS2DH12_FIFO_SRC_REG, (uint8_t *)&fifoSrcReg, 1);
 
     *overrun = fifoSrcReg.ovrn_fifo;
 
@@ -263,13 +266,13 @@ int16_t Lis2dh12::isFIFOfull(uint8_t *overrun) {
 }
 
 /* reset latched IA1 interrupt */
-int16_t Lis2dh12::resetThsInt() {
+int8_t Lis2dh12::resetThsInt() {
     uint8_t data;
     return readReg(LIS2DH12_INT1_SRC, &data, 1);
 }
 
-int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
-    int16_t error = 0;
+int8_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
+    int8_t error;
 
     /* Set threshold in mg */
     EDEBUG_PRINTF("Threshold Event Acceleration: ");
@@ -323,10 +326,12 @@ int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
 }
 
 /* enable interrupt for IA1 on INT2 pin */
-int16_t Lis2dh12::enableThsInt() {
+int8_t Lis2dh12::enableThsInt() {
+    int8_t error;
+
     lis2dh12_ctrl_reg6_t ctrlReg6 = {0};
     ctrlReg6.i2_ia1 = 1;
-    int16_t error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
+    error = writeReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
     if (error) {
         return error;
     }
@@ -336,8 +341,8 @@ int16_t Lis2dh12::enableThsInt() {
     return resetThsInt();
 }
 
-int16_t Lis2dh12::disableThsInt() {
-    int16_t error = 0;
+int8_t Lis2dh12::disableThsInt() {
+    int8_t error;
 
     lis2dh12_ctrl_reg6_t ctrlReg6;
     error = readReg(LIS2DH12_CTRL_REG6, (uint8_t *)&ctrlReg6, 1);
@@ -356,14 +361,14 @@ int16_t Lis2dh12::disableThsInt() {
 }
 
 /* enable interrupt for fifo overflow on INT1 pin */
-int16_t Lis2dh12::enableFIFOOverrunInt() {
+int8_t Lis2dh12::enableFIFOOverrunInt() {
     lis2dh12_ctrl_reg3_t ctrlReg3 = {0};
     ctrlReg3.i1_overrun = 1;
     return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
 }
 
-int16_t Lis2dh12::disableFIFOOverrunInt() {
-    int16_t error = 0;
+int8_t Lis2dh12::disableFIFOOverrunInt() {
+    int8_t error;
 
     lis2dh12_ctrl_reg3_t ctrlReg3;
     error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
@@ -381,8 +386,8 @@ int16_t Lis2dh12::disableFIFOOverrunInt() {
     return error;
 }
 
-int16_t Lis2dh12::enableDoubleClickInterrupt() {
-    int16_t error = 0;
+int8_t Lis2dh12::enableDoubleClickInterrupt() {
+    int8_t error;
 
     /* set double click interrupt threshold and latch interrupt */
     EDEBUG_PRINTF("Double Click Threshold: ");
@@ -468,8 +473,8 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
     return resetDoubleClickInterrupt();
 }
 
-int16_t Lis2dh12::disableDoubleClickInterrupt() {
-    int16_t error = 0;
+int8_t Lis2dh12::disableDoubleClickInterrupt() {
+    int8_t error;
 
     lis2dh12_ctrl_reg3_t ctrlReg3 = {};
     error = readReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
@@ -478,17 +483,16 @@ int16_t Lis2dh12::disableDoubleClickInterrupt() {
     }
 
     ctrlReg3.i1_click = 0;
-    error = writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
-    return error;
+    return writeReg(LIS2DH12_CTRL_REG3, (uint8_t *)&ctrlReg3, 1);
 }
 
-int16_t Lis2dh12::resetDoubleClickInterrupt() {
+int8_t Lis2dh12::resetDoubleClickInterrupt() {
     uint8_t data;
     return readReg(LIS2DH12_CLICK_SRC, &data, 1);
 }
 
-int16_t Lis2dh12::selfTest() {
-    int16_t error = 0;
+int8_t Lis2dh12::selfTest() {
+    int8_t error = 0;
     acceleration_t selfTestArray[TEST_ARRAYSIZE];
     int32_t x_sum = 0;
     int32_t y_sum = 0;
@@ -628,7 +632,7 @@ int16_t Lis2dh12::selfTest() {
         return 0;
     } else {
         EDEBUG_PRINTF(" - - - SENSOR SELF TEST FAILED! - - - \r\n");
-        return 0xffff;
+        return -1;
     }
 }
 
@@ -725,7 +729,7 @@ int16_t Lis2dh12::setDurMs(uint16_t userDurationInMs) {
         return d;
     default:
         EDEBUG_PRINTF("ERROR setting duration: undefined sampling rate\r\n");
-        return 0xff;
+        return -1;
     }
 }
 
