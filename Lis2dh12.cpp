@@ -48,11 +48,11 @@ Lis2dh12::Lis2dh12(I2C *_i2c) : i2c(_i2c), i2cAddr(LIS2DH12_I2C_ADD_H), sampRate
 Lis2dh12::~Lis2dh12() {}
 
 int8_t Lis2dh12::init() {
-    int8_t error;
-
     if (!whoAmI()) {
         return -1;
     }
+
+    int8_t error;
 
     error = initFIFO();
     if (error) {
