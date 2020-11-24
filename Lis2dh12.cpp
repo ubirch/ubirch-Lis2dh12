@@ -289,7 +289,7 @@ int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
         return error;
     }
 
-    /* Configure high pass filter for IA1 */
+    /* Configure high-pass filter for IA1 */
     lis2dh12_ctrl_reg2_t ctrlReg2;
     error = readReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
     if (error) {
@@ -298,6 +298,13 @@ int16_t Lis2dh12::initThsInt(uint16_t thresholdInMg, uint16_t durationInMs) {
 
     ctrlReg2.hp |= 0b001; // HPCLICK + HP_IA2 + HP_IA1 -> HP
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
+    if (error) {
+        return error;
+    }
+
+    /* reset high-pass filter */
+    uint8_t buf;
+    error = readReg(LIS2DH12_REFERENCE, &buf, 1);
     if (error) {
         return error;
     }
@@ -422,7 +429,7 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
         return error;
     }
 
-    /* configure high pass filter for double click interrupt*/
+    /* configure high-pass filter for double click interrupt*/
     lis2dh12_ctrl_reg2_t ctrlReg2;
     error = readReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
     if (error) {
@@ -431,6 +438,13 @@ int16_t Lis2dh12::enableDoubleClickInterrupt() {
 
     ctrlReg2.hp |= 0b100; // HPCLICK + HP_IA2 + HP_IA1 -> HP
     error = writeReg(LIS2DH12_CTRL_REG2, (uint8_t *)&ctrlReg2, 1);
+    if (error) {
+        return error;
+    }
+
+    /* reset high-pass filter */
+    uint8_t buf;
+    error = readReg(LIS2DH12_REFERENCE, &buf, 1);
     if (error) {
         return error;
     }
